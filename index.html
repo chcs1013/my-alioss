@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>My AliOSS</title>
+    <meta name="description" content="My AliOSS">
+    <script type="importmap">{
+      "imports": {
+        "@/": "./",
+        "vue": "./modules/vue/vue.esm-browser.js",
+        "element-plus": "./modules/element-plus/index.full.mjs.js",
+        "element-plus/": "./modules/element-plus/",
+        "icons-vue": "./modules/element-plus/icons-vue.min.js",
+        "util/": "./modules/util/"
+      }
+    }</script>
+    <link rel="stylesheet" href="./vapp.css">
+    <link rel="stylesheet" href="./modules/element-plus/element-plus.css">
+</head>
+
+<body>
+    <div id="app"></div>
+    <div id="myApp"><center>The application is loading.</center></div>
+
+    <script src="./modules/es-module-shims/es-module-shims.js"></script>
+    <!-- <script src="./modules/require.js/require.js"></script> -->
+     <script src="./modules/crypto-js/crypto-js.js"></script>
+    <script type="module" src="./vapp.esm.js"></script>
+</body>
+
+</html>

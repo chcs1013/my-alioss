@@ -1,0 +1,154 @@
+/*
+main JavaScript file for myalioss
+
+*/
+
+
+import { reportFatalError } from './error-reporter.js';
+
+const updateLoadStat = (globalThis.ShowLoadProgress) ? globalThis.ShowLoadProgress : function () { };
+
+globalThis.appInstance_ = {};
+
+
+export function delay(timeout = 0) {
+    return new Promise(resolve => setTimeout(resolve, timeout));
+}
+
+
+updateLoadStat('Waiting');
+await new Promise(resolve => setTimeout(resolve));
+
+import { registerResizableWidget } from './BindMove.js';
+registerResizableWidget();
+
+// break long tasks
+await delay();
+
+updateLoadStat('Loading Vue.js');
+import { createApp } from 'vue';
+
+// break long tasks
+await delay();
+
+import { addCSS } from './BindMove.js';
+
+// break long tasks
+await delay();
+
+await import('./components/VList/VList.js');
+await import('./assets/js/filePicker.js');
+
+// break long tasks
+await delay();
+
+updateLoadStat('Loading Vue Application');
+const Vue_App = (await import('./components/App/App.js')).default;
+
+updateLoadStat('Creating Vue application');
+const app = createApp(Vue_App);
+globalThis.appInstance_.app = app;
+// break long tasks
+await delay();
+updateLoadStat('Loading Element-Plus');
+{
+    const element = await import('element-plus');
+    app.use(element);
+    // for (const i in element) {
+    //     if (i.startsWith('El')) app.component(i, element[i]);
+    // }
+}
+// break long tasks
+await delay();
+updateLoadStat('Creating app instance');
+app.config.unwrapInjectedRef = true;
+app.config.compilerOptions.isCustomElement = (tag) => tag.includes('-');
+app.config.compilerOptions.comments = true;
+
+// app.mount('#app');
+
+updateLoadStat('Finding #myApp');
+const myApp = document.getElementById('myApp');
+console.assert(myApp); if (!myApp) throw new Error('FATAL: #myApp not found');
+
+// break long tasks
+await delay(10);
+
+updateLoadStat('Mounting application to document');
+app.mount(myApp);
+
+// break long tasks
+await delay();
+updateLoadStat('Finishing');
+globalThis.FinishLoad?.call(globalThis);
+
+
+
+
+
+// break long tasks
+await delay();
+
+
+setTimeout(async () => {
+    globalThis.mime_db = await ((await fetch('./assets/data/mime_db-lite.json')).json());
+    const def = 'application/octet-stream';
+    globalThis.GetMimeTypeByExtension = (function getMimeTypeByExtension(extension) {
+        const json = globalThis.mime_db;
+        if (!extension) return def;
+        // 遍历 JSON 对象
+        for (const mimeType in json) {
+            // 检查当前 MIME 类型的 extensions 数组是否包含目标扩展名
+            if (json[mimeType].extensions && json[mimeType].extensions.includes(extension)) {
+                return mimeType; // 如果找到匹配的扩展名，返回对应的 MIME 类型
+            }
+        }
+        return def; // 如果没有找到匹配的扩展名，返回 默认
+    });
+});
+
+
+queueMicrotask(() => {
+    globalThis.document.addEventListener('click', ev => {
+        const target = ev.target;
+        if (!target || target.tagName !== 'A') return;
+        if (target.target !== '_blank') return;
+        if ((new URL(target.href, location.href).hostname === location.hostname)) return;
+        // external link detected
+        ev.preventDefault();
+        queueMicrotask(() => {
+            const el = document.createElement('resizable-widget');
+            el.style.width = Math.min(window.innerWidth, 720) + 'px';
+            el.style.height = Math.min(window.innerHeight, 480) + 'px';
+            document.getElementById('app').append(el);
+
+            const caption = document.createElement('widget-caption');
+            caption.slot = 'widget-caption';
+            caption.append('External Link');
+            const close_button = document.createElement('button');
+            close_button.innerText = 'x';
+            close_button.style.float = 'right';
+            close_button.dataset.excludeBindmove = 'true';
+            close_button.addEventListener('click', () => el.remove());
+            caption.append(close_button);
+            
+            const frame = document.createElement('iframe');
+            // frame.sandbox = 'allow-forms allow-scripts allow-popups allow-popups-to-escape-sandbox';
+            frame.src = new URL(target.href, location.href).href;
+            frame.setAttribute('style', 'width: 100%; height: 100%; overflow: hidden; border: 0; box-sizing: border-box; display: flex; flex-direction: column;');
+
+            el.append(caption, frame);
+            el.open = true;
+        });
+    });
+});
+
+
+
+
+
+
+
+
+
+

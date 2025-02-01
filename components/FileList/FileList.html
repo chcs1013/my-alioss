@@ -1,0 +1,54 @@
+<div v-deep v-bind="$attrs" ref="my">
+    <div class="top-view" v-deep>
+        <ElButton @click="operate('dl')">下载</ElButton>
+        <ElButton @click="operate('newdir')">新建文件夹</ElButton>
+        <ElButton type="danger" plain @click="operate('delete')">删除</ElButton>
+        <ElButton @click="$emit('goPath')">
+            <ElIcon>
+                <RefreshLeft />
+            </ElIcon>
+        </ElButton>
+    </div>
+    <ExplorerNavBar :path="path" @openPath="$emit('goPath', $event)" />
+    <div class="bottom-view" v-deep style="display: flex; flex-direction: column; overflow: hidden; flex: 1;">
+        <ElTable :data="file_list" border style="width:100%;flex:1;margin-bottom:10px"  ref="table"
+            :default-sort="{ prop: 'name' }"
+            @row-click="toggleRowSelection"
+        >
+            <ElTableColumn type="selection" width="40" />
+            <ElTableColumn show-overflow-tooltip sortable prop="name" label="文件名" width="400" />
+            <ElTableColumn show-overflow-tooltip sortable prop="size" label="文件大小" width="110" />
+            <ElTableColumn show-overflow-tooltip sortable prop="time" label="修改时间" width="180" />
+            <ElTableColumn show-overflow-tooltip sortable prop="type" label="文件类型" width="120" />
+            <ElTableColumn show-overflow-tooltip sortable prop="class" label="存储类型" width="110" />
+            <!-- <ElTableColumn fixed="right" label="" width="80">
+                <template #default="scope">
+                    <span style="float: right">
+                        <ElButton type="danger" plain @click="deleteTask(scope.$index)" aria-label="Delete this task">
+                            <ElIcon>
+                                <Delete />
+                            </ElIcon>
+                        </ElButton>
+                    </span>
+                </template>
+            </ElTableColumn> -->
+            <template #empty>
+                <span>没有文件</span>
+            </template>
+        </ElTable>
+
+        <ElPagination small
+            layout="total, prev, pager, next, jumper"
+            v-model:current-page="currentPage"
+            :total="total_files"
+            :page-size="pageSize"
+            @current-change="onCurrentChange"
+            style="place-content:center" />
+    </div>
+
+<style v-deep>
+style>>> {
+    display: none !important;
+}
+</style>
+</div>

@@ -1,0 +1,68 @@
+<div v-deep ref="root" class="explorer-navbar" v-bind="$attrs" tabindex="0"
+ @dragover="onitemdragover"
+ @dragleave="onitemdragleave"
+ @drop="onitemdrop"
+ @wheel.passive="onwheel"
+ @click.self="enterEditMode"
+ @keydown.self.enter="enterEditMode">
+    <input v-if="editMode" v-model="cachedPath" ref="inp"
+        @blur="saveChanges"
+        @keydown.enter="saveChanges"
+        @keydown.esc="discardChanges"
+    >
+    <template v-else>
+        <img class="no-pointer-event" :src="iconUrl" alt="Folder" style="height: 1em; width: 1em; margin: 0 0.5em;">
+        <template v-for="(item, index) in computedPath">
+            <div v-if="index !== 0" class="ui-btn explorer-nav-pathsplit" inert>&gt;</div>
+            <div tabindex="0" class="ui-btn explorer-nav-pathblock"
+                :data-path="item.path"
+                @click="open(item.path)" @keydown.enter.prevent="open(item.path)">{{item.name}}</div>
+        </template>
+        <span class="no-pointer-event" style="display: inline-block; min-height: 1em; min-width: 1em;"></span>
+    </template>
+</div>
+
+<style>
+.explorer-navbar>>> {
+    border-bottom: 1px solid #d9d9d9;
+    display: flex;
+    align-items: center;
+    user-select: none;
+    cursor: default;
+    white-space: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    font-family: var(--font-monospace, "Consolas", monospace);
+}
+.explorer-navbar>>>::-webkit-scrollbar {
+    width: 0; height: 0;
+}
+>>> > input {
+    border: 0;
+    padding: 8px;
+    flex: 1;
+    font-size: 1em;
+    font-family: inherit;
+    outline: 0 !important;
+}
+>>> > .explorer-nav-pathsplit {
+    color: gray;
+}
+>>> .no-pointer-event {
+    pointer-events: none;
+}
+>>> .ui-btn {
+    padding: 8px 4px;
+}
+>>> .ui-btn {
+    transition: 0.1s;
+    background-color: white;
+    outline: 0;
+}
+>>> .ui-btn:hover, >>> .ui-btn:focus, >>> .ui-btn.hover {
+    background-color: #e5f3ff;
+}
+>>> .ui-btn:active, >>> .ui-btn.active {
+    background-color: #cce8ff;
+}
+</style>

@@ -1,0 +1,211 @@
+<div
+    class="component-root"
+    @dragover="(checkIfDragIsAllowed($event) && (isDropping = true))"
+    @drop.capture="((isDragging = false), nu_drop($event))"
+    @keydown.capture.esc="isDragging=false"
+    v-bind="$attrs"
+    v-deep>
+<template v-if="0">
+    @deprecated
+    
+    @dragenter.self.capture="isDragging=true"
+    @dragend.capture="isDragging=false"
+</template>
+    <div v-if="isDropping && useNewUploader" @dragleave.self="isDragging=isDropping=false" v-deep class="cover"><div inert style="pointer-events: none;">Drop</div></div>
+    <h1>上传文件</h1>
+    <ElForm v-deep ref="form" :model="uploadForm" @submit.prevent v-if="!(isLoading || isDone)">
+        <ElFormItem label="重要提示">
+            <span style="color: red; line-height: initial;">切勿通过 Bucket 分享涉黄、涉政、涉恐等违法内容，否则将会导致 Bucket 被切入沙箱。情节严重者，将被追究法律责任。<a href="https://help.aliyun.com/zh/oss/user-guide/oss-sandbox" target="_blank" rel="noopener noreferrer">查看更多&gt;&gt;&gt;</a></span>
+        </ElFormItem>
+
+        <ElFormItem label="上传到" prop="remotePath">
+            <ElInput :disabled="isLoading" v-model="uploadForm.remotePath" style="flex:1"></ElInput>
+        </ElFormItem>
+
+        <ElFormItem v-if="!has_enabled_full_mime_types" label="附加选项">
+            <span>如果您遇到一些文件类型上传后无法直接预览，可能是 Content-Type 所致，您可以尝试<a href="#" @click.prevent="get_enabled_full_mime_types">获取完整 MIME Type 列表</a>。</span>
+        </ElFormItem>
+
+        <ElFormItem v-if="!useNewUploader" label="本地文件" prop="localFile">
+            <ElButton v-show="!isDragging" style="flex: 1" @click="$refs.localFile.click()">选择文件</ElButton>
+            <input v-deep type="file" ref="localFile" :disabled="isLoading"
+                @dragleave.self="isDragging=false"
+                @change="updateFileList"
+                :hidden="!isDragging"
+                style="flex: 1" multiple />
+        </ElFormItem>
+
+        <p v-if="!useNewUploader" style="color: #d81b60;">* 限制:<br><ul style="color: black;"><li>不能上传文件夹</li><li>不能上传大文件</li><li>不能显示上传进度</li></ul>更新浏览器以解除限制。</p>
+
+        <ElFormItem v-if="useNewUploader" label="本地文件" prop="localFile">
+            <a href="#" @click.prevent="nu_selectDirectory">选择目录</a>
+        </ElFormItem>
+        <div v-if="useNewUploader" v-show="!isLoading" class="upload-area" v-deep tabindex="0" role="button"
+        @click="nu_click"
+        @keydown.enter="nu_click"
+        :data-dropping="isDropping">
+            <div v-if="fsapiNotSupported" style="color:red; text-align: center;">
+                <div>Sorry, but FileSystem APIs are not supported in the browser.</div>
+                <a v-if="fsapiNotSupported" href="javascript:" @click.stop.prevent="useNewUploader = false">Fallback to compatibility mode.</a>
+            </div>
+            <span v-else-if="isDropping">释放文件即可添加</span>
+            <span v-else>Drag or click to upload</span>
+        </div>
+
+        <div style="margin: 1em 0" v-if="selected.size > 10">
+            <ElButton size="large" type="primary" :disabled="isLoading" :loading="isLoading" @click="doNewUploadV2()">上传文件</ElButton>
+        </div>
+
+        <div style="border: 1px solid #ccc; border-radius: 10px; margin-bottom: 18px; padding: 10px;">
+            <div v-deep class="chosen-header">
+                <div><span>已选择的文件 ({{selected.size}})</span><br><span style="font-size: small; color: red;">* 切换到文件列表将导致当前选择丢失!</span></div>                <span style="padding-bottom:10px"><ElButton plain type="danger" :disabled="isLoading" @click="useNewUploader ? removeHandle(true) : removeItem(true)"><ElIcon><Delete /></ElIcon></ElButton></span>
+            </div>
+            <div v-if="selected.size" v-for="item in (useNewUploader ? selectedHandlesInfo : selectedFilesInfo)" class="file-item" v-deep>
+                <span>{{item}}</span>
+                <span><ElButton plain type="danger" :disabled="isLoading" @click="useNewUploader ? removeHandle(item) : removeItem(item)"><ElIcon><Delete /></ElIcon></ElButton></span>
+            </div>
+            <div v-else>Nothing</div>
+        </div>
+
+        <ElFormItem style="margin-bottom: 0">
+            <ElButton size="large" type="primary" :disabled="isLoading" :loading="isLoading" @click="doNewUploadV2()">上传文件</ElButton>
+            <ElButton size="large" @click="confirmCancel">取消</ElButton>
+        </ElFormItem>
+    </ElForm>
+    <template v-if="isLoading || isDone">
+        <p v-if="isLoading">正在处理...</p>
+        <p v-else>上传已完成。</p>
+
+        <ElCard v-deep style="margin-top: 0.5em;">
+            <template #header>上传进度</template>
+            <div v-deep class="progress-line"><span>总进度</span><ElProgress style="flex: 1;" :percentage="progress.total" striped striped-flow></ElProgress></div>
+            <div v-deep class="progress-line"><span>当前进度</span><ElProgress style="flex: 1;" :percentage="progress.current" striped striped-flow></ElProgress></div>
+        </ElCard>
+
+        <ElDescriptions :column="1" border v-deep style="margin-top: 1em; font-size: large; white-space: nowrap; overflow: auto;">
+            <ElDescriptionsItem>
+                <template #label>{{ '正在上传' }}</template>
+                <span style="word-break: break-all; white-space: normal;">{{progress.filename}}</span>
+            </ElDescriptionsItem>
+            <ElDescriptionsItem>
+                <template #label>{{ '当前状态' }}</template>
+                <span>{{progress.status}}</span>
+            </ElDescriptionsItem>
+            <ElDescriptionsItem>
+                <template #label>{{ '已上传' }}</template>
+                <span>{{progress.current_bytes}}</span>
+            </ElDescriptionsItem>
+            <ElDescriptionsItem>
+                <template #label>{{ '总大小' }}</template>
+                <span>{{progress.total_bytes}}</span>
+            </ElDescriptionsItem>
+            <ElDescriptionsItem>
+                <template #label>{{ '总进度' }}</template>
+                <span>{{progress.current_files}} / {{progress.total_files}}</span>
+            </ElDescriptionsItem>
+        </ElDescriptions>
+
+        <div v-if="isDone" v-deep style="margin-top: 1em; font-size: large;">
+            <span style="font-family: initial;">上传已完成, 共 {{ progress.done_total }}, {{ progress.done_success }} 成功, {{ progress.done_failure }} 失败, 用时 {{progress.timeCost / 1e3}} 秒。</span>
+        </div>
+        <div v-if="isDone"><span>* 需要手动点击&nbsp;</span><ElIcon><RefreshLeft /></ElIcon><span>&nbsp;，新文件才能在文件列表中显示！</span></div>
+
+        <div v-if="isDone" style="margin-top: 1em;" v-deep>
+            <ElButton type="primary" plain @click="confirmCancel">完成</ElButton>
+        </div>
+    </template>
+</div>
+
+<style v-deep>
+style>>> {
+    display: none !important;
+}
+.component-root>>>[v-deep][v-deep][v-deep][v-deep] {
+    display: block;
+    width: calc(100% - (2 * var(--padding)));
+    height: calc(100% - (2 * var(--padding)));
+    overflow: auto;
+    padding: var(--padding);
+    --padding: 10px;
+    --padding: 0;
+    padding: 1em;
+    padding-top: 0;
+    overflow: auto;
+}
+.cover>>> {
+    position: fixed;
+    inset: 0;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    z-index: 99999;
+    background: white;
+    opacity: 0.5;
+    display: grid;
+    place-items: center;
+}
+.cover>>> * {
+    pointer-events: none;
+    touch-action: none;
+}
+form>>> {
+    border: 1px solid #ccc;
+    padding: 20px;
+    border-radius: 4px;
+    box-shadow: 0 0 5px 0 #ddd;
+}
+.file-item>>> {
+    display: flex;
+    overflow: hidden;
+    align-items: center;
+    border: 1px solid #f0f0f0;
+    padding: 5px;
+    border-radius: 5px;
+}
+.file-item>>> :nth-child(1) {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.file-item+.file-item>>> {
+    margin-top: 8px;
+}
+.chosen-header>>> {
+    border-bottom: 1px solid #ccc;
+    margin-bottom: 10px;
+    display: flex; 
+    justify-content: space-between;
+}
+.upload-area>>> {
+    border: 2px dashed #ccc;
+    display: grid;
+    place-items: center;
+    height: 5em;
+    margin-bottom: 18px;
+    cursor: pointer;
+    transition: .1s;
+    border-radius: 10px;
+}
+.upload-area>>>:hover,.upload-area>>>[data-dropping="true"] {
+    background-color: #f0f0f0;
+}
+.upload-area>>>:active {
+    background-color: #e0e0e0;
+}
+.upload-area>>> span {
+    pointer-events: none;
+}
+.progress-line>>> {
+    display: flex;
+    flex-direction: row;
+    margin-top: 0.5em;
+    font-size: large;
+    align-items: center;
+}
+.progress-line[v-deep] > span {
+    padding-right: 1em;
+}
+</style>

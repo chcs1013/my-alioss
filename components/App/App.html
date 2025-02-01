@@ -1,0 +1,246 @@
+<main v-deep v-bind="$attrs">
+    <nav v-deep>
+        <b><a href="javascript:" @click.prevent="$refs.oss_info_box.open = true">My AliOSS</a></b>
+        <div class="oss-name main-feature flexible-feature" v-deep>
+            <span>OSS:</span>
+            <ElInput :disabled="isConnected" v-model="oss_name" style="flex: 1; margin: 0 0.5em;" :clearable="true" />
+            <ElCheckbox v-model="logon_data.remember_endpoint" style="margin-right: 0.5em;" v-if="!isConnected">记住</ElCheckbox>
+            <ElButton :disabled="isLoading" @click="access" type="primary" plain>{{isConnected ? '断开连接' : '登录'}}</ElButton>
+        </div>
+        <div class="flexible-feature main-feature" v-deep style="display: flex; overflow: hidden; max-width: 20%; white-space: nowrap;">用户: <a href="javascript:" style="white-space: pre;overflow: hidden;text-overflow: ellipsis; margin-left: 0.5em;" @click="$refs.loginBox.open = true">{{username || '未登录'}}</a></div>
+        <div class="flexible-feature alternative-feature" v-deep><ElButton @click="showAppTopMenu = true"><ElIcon><Fold /></ElIcon></ElButton></div>
+        <ElDrawer class="flexible-feature alternative-feature" v-model="showAppTopMenu" :with-header="false" direction="rtl" size="300px">
+            <ElMenu default-active="/" mode="vertical" @select="handleAppTopMenuSelect" style="overflow: auto; height: 100%;">
+                <ElMenuItem index="/">My AliOSS</ElMenuItem>
+                <ElSubMenu index="oss">
+                    <template #title>OSS</template>
+                    <ElMenuItem index="#oss_name">OSS: {{oss_name}}</ElMenuItem>
+                    <ElMenuItem index="#oss_memory">{{logon_data.remember_endpoint ? '要' : '不要'}}记住此 Endpoint</ElMenuItem>
+                    <ElMenuItem index="#oss_connect">{{isConnected ? '断开连接' : '登录'}}</ElMenuItem>
+                </ElSubMenu>
+                <ElMenuItem index="#u">用户：{{username || '未登录'}}</ElMenuItem>
+                <ElMenuItem index="#x">关闭菜单</ElMenuItem>
+            </ElMenu>
+        </ElDrawer>
+    </nav>
+
+    <!-- copyrightBox -->
+    <resizable-widget ref="copyrightBox" style="width: 800px; height: 480px; --padding: 0;">
+        <widget-caption slot="widget-caption">
+            <span>Copyright & License</span>
+            <button style="float:right" data-exclude-bindmove="" @click="$refs.copyrightBox.close()">x</button>
+        </widget-caption>
+        <iframe sandbox="allow-forms allow-scripts allow-popups allow-popups-to-escape-sandbox" v-if="loadCopyRightFrame" src="./assets/static/LICENSE.html" style="width: 100%; height: 100%; overflow: hidden; border: 0; box-sizing: border-box; display: flex; flex-direction: column;"></iframe>
+    </resizable-widget>
+    <!-- copyrightBox -->
+
+    <!-- oss基本信息展示 -->
+    <resizable-widget ref="oss_info_box" style="width: 500px; height: 300px;"> 
+        <widget-caption slot="widget-caption">
+            <span>系统信息</span>
+            <button style="float:right" data-exclude-bindmove="" @click="$refs.oss_info_box.close()">x</button>
+        </widget-caption>
+        <div style="display: flex; flex-direction: column; height: 100%; overflow: auto; white-space: normal; word-break: break-all;">
+            <div>默认 Endpoint: <span v-text="default_endpoint"></span></div>
+            <div>当前 Endpoint: <span v-text="oss_name"></span></div>
+            <div>登录信息: <a href="#" @click.prevent="clearLogonInfo">清除</a></div>
+            <div>自定义域名：手动输入的关联: <a href="#" @click.prevent="clearEbAssociationInfo">清除</a></div>
+            <hr style="box-sizing: border-box; width: 100%;">
+            <div>使用 Vue.JS。<a href="./copyright/" @click.prevent="((loadCopyRightFrame = true), ($refs.copyrightBox.open = true))">点击查看版权信息。</a></div>
+            <div>调试: <a href="#" @click.prevent="generatePreloadData">根据当前配置信息生成预加载数据</a></div>
+            <div>调试: <a href="#" @click.prevent="inspectFileMimeType">文件类型检查器</a></div>
+        </div>
+    </resizable-widget>
+    <!-- oss基本信息展示 -->
+
+    <!-- 用户登录逻辑 -->
+    <resizable-widget ref="loginBox">
+        <widget-caption slot="widget-caption">
+            <span>Access Key 登录</span>
+            <button style="float:right" data-exclude-bindmove="" @click="$refs.loginBox.close()">x</button>
+        </widget-caption>
+        <div style="display: flex; flex-direction: column; height: 100%; overflow: hidden;">
+            <h1 style="text-align: center;">使用 Access Key 登录</h1>
+            <ElForm :model="logon_data" label-width="auto">
+                <ElFormItem label="Access Key ID" prop="access_key_id">
+                    <ElInput v-model="logon_data.access_key_id" />
+                </ElFormItem>
+                <ElFormItem label="Access Key Secret" prop="access_key_secret">
+                    <ElInput v-model="logon_data.access_key_secret" />
+                </ElFormItem>
+                <ElFormItem label="记住登录信息" prop="remember">
+                    <ElSwitch v-model="logon_data.remember" />
+                </ElFormItem>
+                <div style="display: flex;">
+                    <ElButton style="flex: 1;" @click="logonUser(true)" plain type="primary">登录</ElButton>
+                    <ElButton @click="logonUser(false)" v-if="usersecret">退出登录</ElButton>
+                </div>
+            </ElForm>
+        </div>
+    </resizable-widget>
+    <!-- 用户登录逻辑 -->
+
+    <!-- 手动输入bucketname -->
+    <dialog ref="dlgInputBucketName">
+        <p style="font-size: large;">无法从 Endpoint 中识别 bucket name。</p>
+        <div>请尝试：</div>
+        <ol>
+            <li><a href="#" @click.prevent="resolvetrydlgInputBucketName">自动获取</a></li>
+            <li style="margin-top: 0.5em;">
+                <div>手动输入</div>
+                <div style="display: flex; flex-direction: column;">
+                    <div style="margin-top: 0.5em; display: flex;">bucket:&nbsp;<ElInput style="flex: 1;" v-model="bucket_name" placeholder="bucket name..." /></div>
+                    <div style="margin-top: 0.5em; display: flex;">region:&nbsp;<ElInput style="flex: 1;" v-model="region_name" placeholder="region name..." /></div>
+                </div>
+                <div style="display: flex; margin-top: 0.5em;">
+                    <ElButton style="flex: 1;" type="primary" plain @click="resolvedlgInputBucketName">确定</ElButton>
+                </div>
+            </li>
+        </ol>
+        <label><input type="checkbox" v-model="remember_endpoint_bucket_associations.enabled">记住此信息以便下次使用</label>
+        <dialog ref="dlgGuessingBucketName">请稍候</dialog>
+    </dialog>
+
+    <!-- 文件浏览器 -->
+    <div class="main-ui" v-deep v-show="isConnected" ref="main_ui">
+        <ElTabs v-deep class="top-tabs" v-model="active_panel" @tab-click="handleAppTabClick" :before-leave="() => !isLoading">
+            <ElTabPane :disabled="isLoading" label="文件列表" name="file"></ElTabPane>
+            <ElTabPane :disabled="isLoading" label="上传文件" name="upload"></ElTabPane>
+            <ElTabPane :disabled="isLoading" label="下载文件" name="download"></ElTabPane>
+        </ElTabs>
+        <FileList class="left-panel my-panel" v-deep v-show="active_panel === 'file'"
+            @dragover="active_panel = 'upload'"
+            @goPath="goPath"
+            @download="executeDownloadFn"
+            v-model:path="path"
+            v-model:listdata="listdata"
+            :username="username" :usersecret="usersecret" :oss_name="oss_name" :bucket="bucket_name" :region="region_name"
+            ></FileList>
+        <!-- <div class="seperator" style="border-left: 1px solid #ccc;"></div>
+        <div class="right-panel" v-deep style="flex: 1;"></div> -->
+        <FileUploadForm v-deep class="my-panel" v-if="active_panel === 'upload'" 
+            v-model:active_panel="active_panel" v-model:is_loading="isLoading"
+            :path="path" v-model:has_enabled_full_mime_types="has_enabled_full_mime_types"
+            :username="username" :usersecret="usersecret" :oss_name="oss_name" :bucket_name="bucket_name" :region_name="region_name"
+            ></FileUploadForm>
+        <!-- <div class="my-panel" v-deep v-if="active_panel === 'upload'"> -->
+            <!-- <h1 style="margin-top: 0;">上传文件</h1> -->
+            <!-- <ElUpload
+                ref="upload"
+                :action="uploadUrl"
+                :data="uploadData"
+                :file-list="uploadFileList"
+                :on-remove="handleUploadFileRemove"
+                :on-success="handleUploadFileSuccess"
+                :on-error="handleUploadFileError"
+                :on-progress="handleUploadFileProgress"
+                :before-upload="handleUploadFileBefore"
+                :on-exceed="handleUploadFileExceed"
+                :limit="1"
+                :show-file-list="true"
+                :auto-upload="false"
+                :on-change="handleUploadFileChange"
+            />
+            <ElButton @click="uploadFile" type="primary">上传</ElButton> -->
+            <!-- <file-picker-ui ref="file_picker" multiple required v-deep></file-picker-ui> -->
+        <!-- </div> -->
+        <FileDownloadUi class="my-panel" v-deep v-if="active_panel === 'download'"
+            v-model="files_to_download"
+            :username="username" :usersecret="usersecret" :oss_name="oss_name" :bucket="bucket_name" :region="region_name"
+            ></FileDownloadUi>
+    </div>
+
+    <template v-if="!isConnected">
+        <div style="display: flex; flex-direction: column; overflow: hidden; height: 100%; padding: 1em;">
+            <!-- <div style="font-size: x-large;"><b>获取 Bucket 列表</b></div>
+            <div><a href="#" @click.prevent="getBuckets">点击获取 Bucket 列表</a></div>
+            <div><b>Bucket 列表</b></div>
+            <div><ul><li v-for="item in buckets">{{item.name}}</li></ul></div> -->
+            <h2>请输入有效的 Endpoint 地址。</h2>
+            <div style="display: flex; align-items: center;">OSS:&nbsp;<ElInput v-model="oss_name" /></div>
+            <p v-deep class="main-feature flexible-feature">前往页面上方以登录。</p>
+            <ElCheckbox class="flexible-feature alternative-feature" v-deep v-model="logon_data.remember_endpoint" style="margin-right: 0.5em;" v-if="!isConnected">记住</ElCheckbox>
+            <ElButton class="flexible-feature alternative-feature" v-deep :disabled="isLoading" @click="access" type="primary" plain>{{isConnected ? '断开连接' : '登录'}}</ElButton>
+       </div>
+    </template> 
+</main>
+
+<style>
+    #myApp * {
+        font-family: Consolas, '宋体', NSimsun, monospace;
+    }
+    #myApp, #app {
+        position: absolute;
+        left: 0; top: 0; right: 0; bottom: 0;
+        inset: 0;
+        width: 100%; height: 100%;
+        box-sizing: border-box;
+        padding: 0;
+    }
+    main>>> {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        height: 100%;
+    }
+    main>>> nav {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5em 1em;
+        background-color: #f0f0f0;
+        border-bottom: 1px solid;
+    }
+    main>>> .oss-name>>> {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        flex: 1;
+        margin: 0 1em;
+        max-width: 50%;
+    }
+    main>>> .flexible-feature.alternative-feature {
+        display: none !important;
+    }
+    @media screen and (max-width: 500px) {
+        main>>> .flexible-feature.main-feature {
+            display: none !important;
+        }
+        main>>> .flexible-feature.alternative-feature {
+            display: revert !important;
+        }
+    }
+    main>>> .main-ui>>> {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+        flex-direction: row;
+    }
+    main>>> .main-ui > * {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-sizing: border-box;
+    }
+    main>>> nav>>> .el-drawer__body {
+        overflow: auto; height: 100%;
+        box-sizing: border-box;
+    }
+    main>>> .main-ui>>> {
+        flex-direction: column;
+    }
+    main>>> .main-ui>>> .top-tabs>>> {
+        padding: 0 1em;
+    }
+    main>>> .main-ui>>> .my-panel>>> {
+        flex: 1 1 0%;
+        padding: 1em 0.5em;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    main>>> .main-ui>>> .my-panel>>> {
+        padding-top: 0 !important;
+    }
+</style>

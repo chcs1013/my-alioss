@@ -1,0 +1,59 @@
+<div v-deep v-bind="$attrs" ref="my">
+    <h1 style="margin-top: 0;">下载文件</h1>
+    <p style="margin-top: 0;" v-if="!files_to_download.length">在“文件列表”中选择文件以下载。</p>
+    <div v-else-if="!hasInit" style="display: flex; flex-direction: column;">
+        <div>在开始下载 {{ files_to_download.length }} 个文件前，请先完成以下表单。 </div>
+        <label v-deep class="form-item">
+            <span>下载类型:</span>
+            <ElRadioGroup v-model="dltype">
+                <ElRadio value="1">临时链接 (<b>推荐</b>)</ElRadio>
+                <ElRadio value="2">永久链接 (需服务器允许公共访问)</ElRadio>
+            </ElRadioGroup>
+        </label>
+        <label v-deep class="form-item" v-if="dltype === '1'">
+            <span>链接有效期 (秒):</span>
+            <ElInput type="number" v-model="linktime" :min="1" :max="604800" placeholder="在 1~604800 之间" />
+        </label>
+        <div v-if="dltype === '1'" style="margin-top: 5px;" v-deep><ElSegmented v-model="linktime_prefilled" :options="linktime_prefill_options" size="large"  /></div>
+        <label v-deep class="form-item" v-if="dltype === '1'" v-show="false">
+            <span>链接生效时间:</span>
+            <ElRadioGroup v-model="linkstart">
+                <ElRadio value="1">现在</ElRadio>
+                <ElRadio value="2">手动指定</ElRadio>
+            </ElRadioGroup>
+        </label>
+        <div class="form-item" v-deep>
+            <ElButton type="primary" plain @click="getlink" size="large">获取链接</ElButton>
+        </div>
+    </div>
+    <ElTable v-else v-deep :data="files_to_download" border style="width:100%;flex:1;" ref="table">
+        <ElTableColumn type="selection" width="40" />
+        <ElTableColumn prop="name" label="文件名" fixed width="200" />
+        <ElTableColumn prop="type" label="链接类型" width="110" />
+        <ElTableColumn prop="time" label="有效期" width="180" />
+        <ElTableColumn prop="link" label="文件链接" width="4000" />
+        <ElTableColumn fixed="right" label="操作" width="80">
+            <template #default="scope">
+                <span style="float: right; display: flex; flex-direction: column;">
+                    <ElButton type="success" plain @click="copyItem(scope.$index)">复制</ElButton>
+                    <ElButton type="success" plain @click="openItem(scope.$index)" style="margin-left: 0; margin-top: 5px;">打开</ElButton>
+                </span>
+            </template>
+        </ElTableColumn>
+        <template #empty>
+            <span>没有文件</span>
+        </template>
+    </ElTable>
+
+    <style>
+    .form-item>>> {
+        margin-top: 0.5em;
+        display: flex;
+        align-items: center;
+        white-space: nowrap;
+    }
+    .form-item[v-deep] > span:nth-child(1) {
+        margin-right: 0.5em;
+    }
+    </style>
+</div>

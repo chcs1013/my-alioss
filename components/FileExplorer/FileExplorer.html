@@ -1,0 +1,66 @@
+<div v-deep ref="app">
+    <ExplorerNavBar :path="path"
+        @drop="handleObjectDropping" @openPath="navbar_open" />
+    <v-list-view
+        ref="lst"
+        :data="renderList"
+        allow-drag
+        customDragMimeType="application/x-web-file-explorer-item"
+        :customDragData="customDragData"
+        :customCheckDrag="customCheckDrag"
+        :clickToOpen="clickToOpen"
+        @open="openFile(false)" @openblank="openFile(true)"
+        @drop="handleObjectDropping"
+    >
+        <div class="header" slot="header">
+            <span v-for="item in selectedColumns">{{item}}</span>
+            <button @click="modifyFav" style="float:right">{{isFav?tr('ui.favlist.cancel'):tr('ui.favlist.add')}}</button>
+        </div>
+    </v-list-view>
+    <div class="ctls">
+        <span style="vertical-align: bottom">
+            <span>{{objectCountStr}}</span>
+            <span style="margin: 0 5px">|</span>
+            <ElInput size="small" v-model="filterText" placeholder="Filter..." clearable style="display: inline" @input="doFilter" />
+            <span style="margin: 0 5px">|</span>
+            <ElButton size="small" @click="openFile">{{tr('Open')}}</ElButton>
+        </span>
+
+        <span><label><span></span>
+            <ElSelect v-model="viewType" size="small" placement="top-end">
+                <ElOption value="list" label="List" />
+            </ElSelect>
+        </label></span>
+    </div>
+
+</div>
+
+<style>
+>>> {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+}
+>>> v-list-view {
+    flex: 1;
+    --padding: 10px;
+}
+>>> .ctls {
+    padding: 5px;
+    border-top: 1px solid;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: monospace;
+}
+>>> .ctls * {
+    white-space: nowrap;
+}
+/* >>> .header {
+    display: table-header-group;
+}
+>>> .header > span {
+    display: table-cell;
+} */
+</style>
