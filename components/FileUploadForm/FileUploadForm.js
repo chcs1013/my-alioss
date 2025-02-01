@@ -327,9 +327,9 @@ export async function CoreUploadLogicV4(tasks) {
                     blob: file,
                     cb: (chunk_id, _1, _2, pos, size) => {
                         if (chunk_id == 0) {
-                            this.progress.status = '上传出错. ' + _1 + ' ' + _2;
+                            this.progress.status = '上传出错。 ' + _1 + ' ' + _2;
                         } else {
-                            this.progress.status = `正在上传 chunk ${chunk_id} (共 ${_1} 个 chunk)`;
+                            this.progress.status = (chunk_id > _1) ? `正在合并上传的文件` : `正在上传 chunk ${chunk_id} (共 ${_1} 个 chunk)`;
                             this.progress.current = +truncate_number(_2 * 100, 4);
                             this.progress.current_bytes = prettyPrintFileSize(pos);
                             this.progress.total_bytes = prettyPrintFileSize(size);
@@ -351,9 +351,9 @@ export async function CoreUploadLogicV4(tasks) {
                     blob: i.blob,
                     cb: (chunk_id, _1, _2, pos, size) => {
                         if (chunk_id == 0) {
-                            this.progress.status = '上传出错. ' + _1 + ' ' + _2;
+                            this.progress.status = '上传出错。 ' + _1 + ' ' + _2;
                         } else {
-                            this.progress.status = `正在上传 chunk ${chunk_id} (共 ${_1} 个 chunk)`;
+                            this.progress.status = (chunk_id > _1) ? `正在合并上传的文件` : `正在上传 chunk ${chunk_id} (共 ${_1} 个 chunk)`;
                             this.progress.current = +truncate_number(_2 * 100, 4);
                             this.progress.current_bytes = prettyPrintFileSize(pos);
                             this.progress.total_bytes = prettyPrintFileSize(size);

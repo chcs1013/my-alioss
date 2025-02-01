@@ -1,5 +1,9 @@
 import { sign_url } from "@/sign.js";
 import { xml2json } from '@/components/xml2json/xml2json.js';
+
+// FOR DEBUG ONLY
+// import { ElMessage } from 'element-plus';
+
 function truncate_number(input, digits) {
     // 将数字转换为字符串
     const inputStr = input.toString();
@@ -28,9 +32,12 @@ function truncate_number(input, digits) {
     // 拼接结果
     return digits === 0 ? integerPart : `${integerPart}.${decimalPart}`;
 }
-async function init_upload(path, endpoint, bucket, region, username, usersecret) {
+async function init_upload(path, endpoint, bucket, region, username, usersecret, mimeType) {
     const url = new URL(path, endpoint);
     const additionalHeadersList = { 'content-disposition': 'inline' };
+    if (mimeType) {
+        additionalHeadersList['content-type'] = mimeType;
+    }
     url.search = '?uploads';
     const signed_url = await sign_url(url, { access_key_id: username, access_key_secret: usersecret, bucket, region, method: 'POST', expires: 3600, additionalHeadersList });
     const resp = await fetch(signed_url, {
@@ -68,6 +75,7 @@ async function send(path, blob, pos, endpoint, bucket, region, username, usersec
     // console.log('url:', signed_url);
 
     // core upload
+    // ElMessage.success('headers=' + JSON.stringify(additionalHeadersList, null, 2));
     const response = await fetch(signed_url, {
         method: 'PUT',
         body: blob,
@@ -80,7 +88,7 @@ async function send(path, blob, pos, endpoint, bucket, region, username, usersec
     const ETag = response.headers.get('etag');
     return { crc64, ETag };
 }
-async function post_upload(path, endpoint, bucket, region, username, usersecret, uploadId, etags) {
+async function post_upload(path, endpoint, bucket, region, username, usersecret, uploadId, etags, mimeType) {
     const url = new URL(path, endpoint);
     url.searchParams.set('uploadId', uploadId);
     const additionalHeadersList = { 'content-disposition': 'inline' };
@@ -122,10 +130,13 @@ async function uploadFile({ path: composedPath, blob, cb, endpoint, bucket, regi
     let lastStep = 0, step = 0, errorCount = 0;
     composedPath = (encodeURIComponent(composedPath).replace(/\%2F/ig, '/'));
     // 获取扩展名对应的MIME Type
+    // ElMessage.success('composedPath=' + composedPath);
     const extName = getFileExtension(composedPath);
+    // ElMessage.success('extName=' + extName);
     const mimeType = extName ?
         GetMimeTypeByExtension(extName) :
         GetMimeTypeByExtension();
+    // ElMessage.success('mimeType=' + mimeType);
     // 如果文件小于指定大小，则直接上传，节省请求次数
     if (size < chunkMinFileSize) {
         return (await send(composedPath, blob, 0, endpoint, bucket, region, username, usersecret, 0, 0, mimeType)).ETag;
@@ -135,6 +146,7 @@ async function uploadFile({ path: composedPath, blob, cb, endpoint, bucket, regi
     if (!UploadId) throw new Error('Failed to get UploadId. This seems like an internal error?');
     const etags = [];
     const total_chunks = Math.ceil(blob.size / chunkSize);
+    cb && cb(1, total_chunks, 0, 0, size);
     while (pos < size) {
         ++chunk_id;
         const len = pos + Math.min(blob.size - pos, chunkSize);
@@ -156,7 +168,7 @@ async function uploadFile({ path: composedPath, blob, cb, endpoint, bucket, regi
         step = pos / size;
         if (step - lastStep > 0.00005) {
             lastStep = step;
-            cb && cb(chunk_id, total_chunks, step, pos, size);
+            cb && cb(chunk_id + 1, total_chunks, step, pos, size);
         }
         errorCount = 0;
         await new Promise(resolve => queueMicrotask(resolve));

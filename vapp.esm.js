@@ -92,7 +92,7 @@ await delay();
 
 setTimeout(async () => {
     globalThis.mime_db = await ((await fetch('./assets/data/mime_db-lite.json')).json());
-    const def = 'application/octet-stream';
+    const def = ''//'application/octet-stream';
     globalThis.GetMimeTypeByExtension = (function getMimeTypeByExtension(extension) {
         const json = globalThis.mime_db;
         if (!extension) return def;
