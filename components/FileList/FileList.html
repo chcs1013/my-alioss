@@ -1,13 +1,18 @@
 <div v-deep v-bind="$attrs" ref="my">
     <div class="top-view" v-deep>
-        <ElButton @click="operate('dl')">下载</ElButton>
-        <ElButton @click="operate('newdir')">新建文件夹</ElButton>
-        <ElButton type="danger" plain @click="operate('delete')">删除</ElButton>
-        <ElButton @click="$emit('goPath')">
-            <ElIcon>
-                <RefreshLeft />
-            </ElIcon>
-        </ElButton>
+        <div v-deep>
+            <ElButton size="small" @click="operate('dl')">下载</ElButton>
+            <ElButton size="small" @click="operate('meta')">元数据</ElButton>
+        </div>
+        <div v-deep style="margin-top: 0.5em;">
+            <ElButton size="small" @click="operate('newdir')">新建文件夹</ElButton>
+            <ElButton size="small" type="danger" plain @click="operate('delete')">删除</ElButton>
+            <ElButton size="small" @click="$emit('goPath')">
+                <ElIcon>
+                    <RefreshLeft />
+                </ElIcon>
+            </ElButton>
+        </div>
     </div>
     <ExplorerNavBar :path="path" @openPath="$emit('goPath', $event)" />
     <div class="bottom-view" v-deep style="display: flex; flex-direction: column; overflow: hidden; flex: 1;">

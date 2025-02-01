@@ -133,6 +133,32 @@ const data = {
                     this.$emit('download', selection.map(i => i.name));
                     break;
                 }
+                    
+                case 'meta': {
+                    const selection = this.$refs.table.getSelectionRows();
+                    if (selection.length != 1) return ElMessage.error('此操作只能选择一个文件');
+                    const url = new URL((encodeURIComponent(selection[0].name).replace(/\%2F/ig, '/')), this.oss_name);
+                    const signed_url = await sign_url(url, {
+                        access_key_id: this.username,
+                        access_key_secret: this.usersecret,
+                        expires: 10,
+                        bucket: this.bucket,
+                        region: this.region,
+                        method: 'HEAD',
+                    });
+                    const head = await fetch(signed_url, {
+                        method: 'HEAD'
+                    });
+                    const div = document.createElement('div');
+                    div.style.whiteSpace = 'pre';
+                    let str = '';
+                    head.headers.forEach((value, key) => {
+                        str += `${key}: ${value}\n`;
+                    });
+                    div.innerText = str;
+                    CreateDynamicResizableView(div, '文件元数据: ' + selection[0].name, 720, 300);
+                    break;
+                }
 
                 default:
                     break;

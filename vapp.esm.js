@@ -109,6 +109,25 @@ setTimeout(async () => {
 
 
 queueMicrotask(() => {
+    globalThis.CreateDynamicResizableView = function (element, title, width, height) {
+        const el = document.createElement('resizable-widget');
+        el.style.width = Math.min(window.innerWidth, width) + 'px';
+        el.style.height = Math.min(window.innerHeight, height) + 'px';
+        document.getElementById('app').append(el);
+
+        const caption = document.createElement('widget-caption');
+        caption.slot = 'widget-caption';
+        caption.append(title);
+        const close_button = document.createElement('button');
+        close_button.innerText = 'x';
+        close_button.style.float = 'right';
+        close_button.dataset.excludeBindmove = 'true';
+        close_button.addEventListener('click', () => el.remove());
+        caption.append(close_button);
+
+        el.append(caption, element);
+        el.open = true;  
+    };
     globalThis.document.addEventListener('click', ev => {
         const target = ev.target;
         if (!target || target.tagName !== 'A') return;
@@ -117,28 +136,12 @@ queueMicrotask(() => {
         // external link detected
         ev.preventDefault();
         queueMicrotask(() => {
-            const el = document.createElement('resizable-widget');
-            el.style.width = Math.min(window.innerWidth, 720) + 'px';
-            el.style.height = Math.min(window.innerHeight, 480) + 'px';
-            document.getElementById('app').append(el);
-
-            const caption = document.createElement('widget-caption');
-            caption.slot = 'widget-caption';
-            caption.append('External Link');
-            const close_button = document.createElement('button');
-            close_button.innerText = 'x';
-            close_button.style.float = 'right';
-            close_button.dataset.excludeBindmove = 'true';
-            close_button.addEventListener('click', () => el.remove());
-            caption.append(close_button);
-            
             const frame = document.createElement('iframe');
             // frame.sandbox = 'allow-forms allow-scripts allow-popups allow-popups-to-escape-sandbox';
             frame.src = new URL(target.href, location.href).href;
             frame.setAttribute('style', 'width: 100%; height: 100%; overflow: hidden; border: 0; box-sizing: border-box; display: flex; flex-direction: column;');
 
-            el.append(caption, frame);
-            el.open = true;
+            CreateDynamicResizableView(frame, 'External Link', 720, 1000);
         });
     });
 });

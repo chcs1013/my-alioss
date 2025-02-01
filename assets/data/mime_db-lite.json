@@ -109,7 +109,60 @@
             "list",
             "log",
             "in",
-            "ini"
+            "ini",
+            "ada",
+            "adb",
+            "ads",
+            "asm",
+            "bas",
+            "bash",
+            "bat",
+            "c",
+            "c++",
+            "cbl",
+            "cc",
+            "clj",
+            "cob",
+            "cpp",
+            "cs",
+            "cxx",
+            "diff",
+            "go",
+            "groovy",
+            "h",
+            "hh",
+            "hpp",
+            "hs",
+            "hxx",
+            "java",
+            "jsp",
+            "ksh",
+            "kt",
+            "lhs",
+            "lisp",
+            "lua",
+            "m",
+            "m4",
+            "nim",
+            "patch",
+            "php",
+            "po",
+            "pp",
+            "py",
+            "pyw",
+            "r",
+            "rb",
+            "rs",
+            "s",
+            "scala",
+            "sh",
+            "swg",
+            "swift",
+            "v",
+            "vb",
+            "vcxproj",
+            "xcodeproj",
+            "zsh"
         ]
     },
     "text/prs.lines.tag": {
@@ -1825,14 +1878,6 @@
             "class"
         ]
     },
-    "application/javascript": {
-        "source": "apache",
-        "charset": "UTF-8",
-        "compressible": true,
-        "extensions": [
-            "js"
-        ]
-    },
     "application/json": {
         "source": "iana",
         "charset": "UTF-8",
@@ -3088,16 +3133,6 @@
     "application/x-msdos-program": {
         "extensions": [
             "exe"
-        ]
-    },
-    "application/x-msdownload": {
-        "source": "apache",
-        "extensions": [
-            "exe",
-            "dll",
-            "com",
-            "bat",
-            "msi"
         ]
     },
     "application/x-msmediaview": {
