@@ -277,6 +277,7 @@ const data = {
 
     mounted() {
         this.$nextTick(() => this.uploadForm.remotePath = this.path);
+        this.$nextTick(() => ((this.fsapiNotSupported) && (this.useNewUploader = false)));
     },
 
     watch: {

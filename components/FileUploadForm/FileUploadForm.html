@@ -11,7 +11,7 @@
     @dragenter.self.capture="isDragging=true"
     @dragend.capture="isDragging=false"
 </template>
-    <div v-if="isDropping && useNewUploader" @dragleave.self="isDragging=isDropping=false" v-deep class="cover"><div inert style="pointer-events: none;">Drop</div></div>
+    <div v-if="isDropping && useNewUploader" @dragleave.self="isDragging=isDropping=false" @click.self="isDragging=isDropping=false" v-deep class="cover"><div inert style="pointer-events: none;">Drop</div></div>
     <h1>上传文件</h1>
     <ElForm v-deep ref="form" :model="uploadForm" @submit.prevent v-if="!(isLoading || isDone)">
         <ElFormItem label="重要提示">
