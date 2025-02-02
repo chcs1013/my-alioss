@@ -373,7 +373,7 @@ export async function CoreUploadLogicV4(tasks) {
     }
     return {
         total: totalTasks,
-        success: totalUploaded,
+        success: totalUploaded - totalFailed,
         failure: totalFailed,
     };
 }
