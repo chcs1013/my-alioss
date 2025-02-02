@@ -51,6 +51,22 @@ const data = {
     },
 
     methods: {
+        async dynupdate(name, operation = 'ADD|DELETE', data = {}) {
+            if (operation === 'DELETE') {
+                if (name instanceof Set) {
+                    this.$emit('update:listdata', this.listdata.filter(value => !name.has(value.Key)));
+                    return;
+                }
+                this.$emit('update:listdata', this.listdata.filter(value => value.Key !== name));
+                return;
+            }
+            if (operation === 'ADD') {
+                const myArr = Array.from(this.listdata);
+                myArr.push(data);
+                this.$emit('update:listdata', myArr.sort((a, b) => a.Key.localeCompare(b.Key)));
+                return;
+            }
+        }, 
         async operate(type) {
             switch (type) {
                 case 'delete': {
@@ -60,6 +76,7 @@ const data = {
                     try { await ElMessageBox.confirm(`要删除 ${selection.length} 文件？`, '删除', { type: 'warning', confirmButtonText: '删除', cancelButtonText: '不删除' }) } catch { return }
                     this.loadingInstance = ElLoading.service({ lock: false, fullscreen: false, target: this.$refs.my });
 
+                    const deleted = new Set();
                     for (const I of selection) {
                         const i = (encodeURIComponent(I.name).replace(/\%2F/ig, '/'));
                         if (!this.usersecret) {
@@ -68,6 +85,7 @@ const data = {
                             try {
                                 const resp = await fetch(url, { method: 'DELETE' });
                                 if (!resp.ok) throw -1;
+                                deleted.add(I.name);
                             }
                             catch {
                                 ElMessageBox.alert('此 bucket 不允许匿名写入。请登录后重试。', '错误', { type: 'error', confirmButtonText: '好' });
@@ -89,19 +107,18 @@ const data = {
                                 method: 'DELETE',
                             });
                             if (!resp.ok) throw -1;
+                            deleted.add(I.name);
                         }
                         catch {
                             ++errorCount;
                             continue;
                         }
                     }
+                    this.dynupdate(deleted, 'DELETE');
                     if (errorCount) ElMessageBox.alert(errorCount + ' 文件删除失败。请检查文件是否存在，或者您是否有权限删除此文件。', '错误', { type: 'error', confirmButtonText: '好' });
                     else ElMessage.success('删除成功');
                     this.loadingInstance.close();
                     this.loadingInstance = null;
-                    queueMicrotask(() => this.$nextTick(() => {
-                        this.$emit('goPath');
-                    })); // 自动刷新
                     break;
                 }
                 
@@ -120,8 +137,13 @@ const data = {
                             username: this.username,
                             usersecret: this.usersecret,
                         }).then(() => {
+                            const date = new Date().getTime();
                             ElMessage.success('操作成功完成。');
-                            this.$emit('goPath');
+                            this.dynupdate(v.value + '/', 'ADD', {
+                                Key: v.value + '/',
+                                Size: 0, LastModified: date,
+                                Type: 'Normal', Class: ''
+                            });
                         }).catch(e => ElMessage.error('操作未能成功完成。' + e));
                     }).catch(() => { });
                     break;
