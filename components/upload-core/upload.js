@@ -51,7 +51,10 @@ async function init_upload(path, endpoint, bucket, region, username, usersecret,
 async function send(path, blob, pos, endpoint, bucket, region, username, usersecret, chunk_id, UploadId, mimeType = '') {
     const url = new URL(path, endpoint);
     const additionalHeadersList = { 'content-disposition': 'inline' };
-    if (mimeType) {
+    if (blob.type) {
+        additionalHeadersList['content-type'] = blob.type;
+    }
+    else if (mimeType) {
         additionalHeadersList['content-type'] = mimeType;
     }
     if (!chunk_id) {
@@ -133,9 +136,9 @@ async function uploadFile({ path: composedPath, blob, cb, endpoint, bucket, regi
     // ElMessage.success('composedPath=' + composedPath);
     const extName = getFileExtension(composedPath);
     // ElMessage.success('extName=' + extName);
-    const mimeType = extName ?
+    const mimeType = blob.type ? blob.type : (extName ?
         GetMimeTypeByExtension(extName) :
-        GetMimeTypeByExtension();
+        GetMimeTypeByExtension());
     // ElMessage.success('mimeType=' + mimeType);
     // 如果文件小于指定大小，则直接上传，节省请求次数
     if (size < chunkMinFileSize) {

@@ -101,7 +101,7 @@ const data = {
                 }
             }).catch(() => { });
         },
-        async traverseDirectory(directoryHandle, currentPath = '') {
+        async traverseDirectory(directoryHandle, currentPath = '', handles) {
             let fileCount = 0; // 用于统计当前目录中处理的文件数量
 
             for await (const entry of directoryHandle.values()) {
@@ -112,19 +112,19 @@ const data = {
                     // 上传文件到OSS
 
                     entry.fullpath = entryPath;
-                    this.selectedHandles.set(entryPath, entry);
+                    handles.set(entryPath, entry);
 
                     fileCount++; // 文件数量加1
                 } else if (entry.kind === 'directory') {
                     // console.log('目录路径:', entryPath);
                     // 递归遍历子目录，并获取子目录中处理的文件数量
-                    const subDirFileCount = await this.traverseDirectory(entry, entryPath);
+                    const subDirFileCount = await this.traverseDirectory(entry, entryPath, handles);
                     fileCount += subDirFileCount; // 累加子目录的文件数量
 
                     // 如果子目录是空的（subDirFileCount === 0），手动处理空目录
                     if (subDirFileCount === 0) {
                         // console.log('空目录:', entryPath);
-                        this.selectedHandles.set(entryPath + '/', { is_empty_directory: true, fullpath: entryPath });
+                        handles.set(entryPath + '/', { is_empty_directory: true, fullpath: entryPath });
                     }
                     fileCount++;
                 }
@@ -148,15 +148,21 @@ const data = {
                 }
                 // await Promise.all(proms);
 
+                // 重要性能优化
+                const handles = new Set();
+
                 for (const i of proms) {
                     const handle = await i;
                     if (handle.kind === 'directory') {
                         // Scan all files in the directory, then wrap it in a new object
-                        await this.traverseDirectory(handle, handle.name);
+                        await this.traverseDirectory(handle, handle.name, handles);
                         continue;
                     }
-                    this.selectedHandles.set(handle.name, handle);
+                    handles.set(handle.name, handle);
                 }
+                // this.selectedHandles = handles;
+                this.selectedHandles.clear();
+                for (const i of handles) this.selectedHandles.add(i);
             } finally {
                 this.loadingInstance.close();
                 this.loadingInstance = null;
@@ -166,7 +172,10 @@ const data = {
             window.showDirectoryPicker().then(async handle => {
                 this.loadingInstance = ElLoading.service({ lock: false, fullscreen: false, target: this.$el.parentElement });
                 try {
-                    await this.traverseDirectory(handle, handle.name);
+                    const handles = new Set();
+                    await this.traverseDirectory(handle, handle.name, handles);
+                    this.selectedHandles.clear();
+                    for (const i of handles) this.selectedHandles.add(i);
                 } finally {
                     this.loadingInstance.close();
                     this.loadingInstance = null;
@@ -365,6 +374,7 @@ export async function CoreUploadLogicV4(tasks) {
         this.progress.total = +truncate_number((totalUploaded - totalFailed) / totalTasks * 100, 4);
         this.progress.status = '上传已完成。';
     }
+    this.progress.total = 100;
     return {
         total: totalTasks,
         success: totalUploaded - totalFailed,
