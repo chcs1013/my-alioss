@@ -38,7 +38,7 @@ const data = {
             listdata: [],
             loadingInstance: null,
             path: '/',
-            bucket_name_loader_PromiseObject: { a: null, b: null },
+            bucket_name_loader_PromiseObject: { a: null, b: null, c: null, d: null, e: 0, f: '' },
             active_panel: 'file',
             loadCopyRightFrame: false,
             files_to_download: [],
@@ -243,20 +243,21 @@ const data = {
             }
 
             // 匹配标准OSS Endpoint格式: bucket.oss-region.aliyuncs.com
-            const ossPattern = /^([a-z0-9_-]+)\.(oss-[a-z0-9-]+)\.aliyuncs\.com$/i;
+            const ossPattern = /^([a-z0-9_-]+)\.(oss-)([a-z0-9-]+)\.aliyuncs\.com$/i;
             const match = hostname.match(ossPattern);
 
             if (match) {
                 // 标准OSS Endpoint情况
                 return {
                     bucket: match[1],
-                    region: match[2]
+                    region: match[3]
                 };
             } else {
                 // // 自定义域名情况
                 if (Reflect.has(this.user_endpoint2name, endpoint)) {
                     return (Reflect.get(this.user_endpoint2name, endpoint));
                 }
+                this.bucket_name_loader_PromiseObject = { a: null, b: null, c: null, d: null, e: 0, f: '' };
                 this.$refs.dlgInputBucketName.showModal();
                 return await new Promise((resolve, reject) => {
                     this.bucket_name_loader_PromiseObject.a = resolve;
@@ -278,16 +279,83 @@ const data = {
                 });
                 const fakeresp_json = xml2json(await fakeresp.text());
                 let stringToSign = fakeresp_json.StringToSign; // 获取真实需要的签名字符串
-                this.bucket_name = stringToSign.match(/\/([^\/]+)\/$/)[1];
+                const bucket_name = stringToSign.match(/\/([^\/]+)\/$/)[1];
+                this.bucket_name = bucket_name;
 
-                // this.bucket_name_loader_PromiseObject.a(this.bucket_name);
-                // debugger;
-                // this.region_name = 'manual';
-                throw ''
+                // 通过随机选择访问一个 endpoint 即可获得正确的 endpoint
+                const correct_region = await (async () => {
+                    // 通过一个必定不存在的地址，加上List File操作（需权限），使目标
+                    // 节点如果正确，则必定返回其他error；如果EC为0003-00001403，则
+                    // 说明节点不正确，此时返回值会带上正确的 Endpoint。
+                    const random_region = 'cn-hangzhou'; // 需要保证此region的长期可用性
+                    const random_string = '9d5304a2-4ec4-493a-812a-55ab4258c2f3'; //
+                    const url = new URL(`https://${this.bucket_name}.oss-${random_region}.aliyuncs.com/${random_string}/?list-type=2`); // random string
+                    // // 然而直接fetch会报CORS ERROR，所以我们让用户手动复制粘贴
+                    // const resp = await fetch(url, {
+                    //     method: 'GET',
+                    //     headers: {
+                    //         'x-oss-date': new Date().toUTCString(),
+                    //         Authorization: 'OSS LLLLLLLL:MA==',
+                    //     }
+                    // });
+                    // const resp_json = xml2json(await resp.text());
+                    const resp_raw = (await new Promise((resolve, reject) => {
+                        this.bucket_name_loader_PromiseObject.c = resolve;
+                        this.bucket_name_loader_PromiseObject.d = reject;
+                        this.bucket_name_loader_PromiseObject.e = 1;
+                        this.bucket_name_loader_PromiseObject.f = url.href;
+                        this.$refs.dlgInputUserManualRegion.showModal();
+                    }));
+                    let stat = 0, resp_json = null;
+                    if (resp_raw.includes('</Endpoint>')) {
+                        resp_json = xml2json(resp_raw);
+                    } else {
+                        const resp = resp_raw.split(' ');
+                        // 字符串匹配
+                        for (let i = 0, l = resp.length; i < l; ++i) {
+                            const data = resp[i];
+                            if (stat == 0) {
+                                if (url.hostname === data) stat = 1;
+                                continue;
+                            }
+                            if (stat === 1) if (data !== bucket_name) {
+                                resp_json = { EC: data }; break;
+                            }
+                            if (stat === 2) {
+                                resp_json = { Endpoint: data };
+                            }
+                            if (stat === 3) {
+                                resp_json.EC = data; break;
+                            }
+                            ++stat;
+                        }
+
+                        if (resp_json.EC !== '0003-00001403') {
+                            if (resp_json.EC === '0003-00000001' || resp_json.EC === '0003-00000002' || resp_json.EC === '0003-00000905') {
+                                // AccessDenied
+                                // 说明之前构造的正好是正确的region
+                                return random_region;
+                            }
+                            // 无法处理
+                            throw -1;
+                        }
+                    }
+                    // 尝试获得返回值
+                    return resp_json.Endpoint.match(/oss-([a-z0-9-]+)\.aliyuncs\.com$/)[1];
+                })();
+                if (!correct_region) throw 1;
+                console.info('[app]', '解析的region:', correct_region);
 
                 this.bucket_name_loader_PromiseObject.a({
-                    bucket: this.bucket_name, region: this.region_name,
-                })
+                    bucket: bucket_name, region: correct_region,
+                });
+
+                if (this.remember_endpoint_bucket_associations.enabled) {
+                    this.user_endpoint2name[this.oss_name] = {
+                        bucket: bucket_name, region: correct_region,
+                    };
+                    localStorage.setItem('Project:MyAliOSS;Type:User;Key:user_endpoint2name', JSON.stringify(this.user_endpoint2name));
+                }
             } catch (e) {
                 this.$refs.dlgGuessingBucketName.close();
                 ElMessage.error('无法自动获得相关数据。请手动输入。');
@@ -295,12 +363,20 @@ const data = {
             }
             this.$refs.dlgGuessingBucketName.close();
             this.$refs.dlgInputBucketName.close();
-
-            if (this.remember_endpoint_bucket_associations.enabled) {
-                this.user_endpoint2name[this.oss_name] = {
-                    bucket: this.bucket_name, region: this.region_name,
-                };
-                localStorage.setItem('Project:MyAliOSS;Type:User;Key:user_endpoint2name', JSON.stringify(this.user_endpoint2name));
+        },
+        async resolvetrydlgInputRegionName(n) {
+            if (n === 1) {
+                this.bucket_name_loader_PromiseObject.e = 2;
+                this.bucket_name_loader_PromiseObject.f = '';
+                try {
+                    const text = await navigator.clipboard.readText();
+                    this.bucket_name_loader_PromiseObject.f = text;
+                } catch { }
+                return;
+            }
+            if (n === 2) {
+                this.bucket_name_loader_PromiseObject.c(this.bucket_name_loader_PromiseObject.f);
+                this.$refs.dlgInputUserManualRegion.close();
             }
         },
         resolvedlgInputBucketName() {

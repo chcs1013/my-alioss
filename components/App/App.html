@@ -100,6 +100,22 @@
         <label><input type="checkbox" v-model="remember_endpoint_bucket_associations.enabled">记住此信息以便下次使用</label>
         <dialog ref="dlgGuessingBucketName">请稍候</dialog>
     </dialog>
+    <dialog ref="dlgInputUserManualRegion">
+        <template v-if="1 == bucket_name_loader_PromiseObject.e">
+            <div>由于安全原因，我们无法直接获取 region 信息，请手动操作。</div>
+            <p style="font-size: large; display: flex; align-items: center;">
+                <span>请把下面的文本全部复制(如果有&lt;Error&gt;，则从&lt;Error&gt;复制到&lt;/Error&gt;)，然后点击</span>
+                <ElButton @click="resolvetrydlgInputRegionName(1)">继续</ElButton>
+                <span>。</span>
+            </p>
+            <iframe :src="bucket_name_loader_PromiseObject.f" style="border: 1px solid #000; width: 100%; box-sizing: border-box; height: 200px;"></iframe>
+        </template>
+        <template v-else-if="2 == bucket_name_loader_PromiseObject.e">
+            <div>请把复制的文本粘贴到下面的文本框。</div>
+            <div style="margin: 0.5em 0;"><ElButton @click="resolvetrydlgInputRegionName(2)">我已粘贴</ElButton></div>
+            <ElInput v-model="bucket_name_loader_PromiseObject.f" type="textarea" placeholder="请粘贴..." :rows="5" />
+        </template>
+    </dialog>
 
     <!-- 文件浏览器 -->
     <div class="main-ui" v-deep v-show="isConnected" ref="main_ui">

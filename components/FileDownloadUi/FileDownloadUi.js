@@ -62,7 +62,8 @@ const data = {
                     });
                     i.link = signed_url;
                     i.type = '临时链接';
-                    i.time = new Date(new Date().getTime() + 1000 * (+this.linktime)).toLocaleString();
+                    i.time_data = new Date(new Date().getTime() + 1000 * (+this.linktime))
+                    i.time = i.time_data.toLocaleString();
                 }
                 this.hasInit = true;
             }
@@ -74,7 +75,23 @@ const data = {
                 this.loadingInstance = null;
             }
         },
+        checkItemAvailability: (function () {
+            let _ = 0;
+            return function (item) {
+                if (!item.time_data) return true;
+                const now = new Date().getTime();
+                const deltat = now - _;
+                _ = now;
+                if (deltat < 1000) return true;
+                if (now > new Date(item.time_data).getTime()) {
+                    ElMessage.error('链接已过期，请重新生成');
+                    return false;
+                }
+                return true;
+            }
+        })(),
         async copyItem(i) {
+            if (!this.checkItemAvailability(this.files_to_download[i])) return;
             const value = this.files_to_download[i].link;
             try {
                 await navigator.clipboard.writeText(value);
@@ -88,6 +105,7 @@ const data = {
             }
         },
         openItem(i) {
+            if (!this.checkItemAvailability(this.files_to_download[i])) return;
             // console.log(i);
             window.open(this.files_to_download[i].link, '_blank');
         },
