@@ -49,6 +49,8 @@
             <div>使用 Vue.JS。<a href="./copyright/" @click.prevent="((loadCopyRightFrame = true), ($refs.copyrightBox.open = true))">点击查看版权信息。</a></div>
             <div>调试: <a href="#" @click.prevent="generatePreloadData">根据当前配置信息生成预加载数据</a></div>
             <div>调试: <a href="#" @click.prevent="inspectFileMimeType">文件类型检查器</a></div>
+            <hr style="box-sizing: border-box; width: 100%;">
+            <div>版本: {{appVersion}}</div>
         </div>
     </resizable-widget>
     <!-- oss基本信息展示 -->

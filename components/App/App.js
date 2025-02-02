@@ -43,6 +43,7 @@ const data = {
             loadCopyRightFrame: false,
             files_to_download: [],
             has_enabled_full_mime_types: true,
+            appVersion: '正在获取...',
         }
     },
 
@@ -543,6 +544,15 @@ const data = {
                 }
             });
         });
+
+        fetch('./assets/data/version.json').then(v => v.json()).then(json => {
+            if (json.schema_version === 1) {
+                this.appVersion = json.data.values['app.version.id'];
+            } else {
+                console.warn('[version]', 'Unsupported schema version:', json.schema_version);
+                this.appVersion = '0.0.0.0';
+            }
+        }).catch(() => this.appVersion = '0.0.0.0');
     },
 
     template: await getHTML(import.meta.url, componentId),
