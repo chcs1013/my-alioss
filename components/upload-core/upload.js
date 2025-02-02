@@ -139,6 +139,7 @@ async function uploadFile({ path: composedPath, blob, cb, endpoint, bucket, regi
     // ElMessage.success('mimeType=' + mimeType);
     // 如果文件小于指定大小，则直接上传，节省请求次数
     if (size < chunkMinFileSize) {
+        cb && cb(1, 1, 0, 0, size);
         return (await send(composedPath, blob, 0, endpoint, bucket, region, username, usersecret, 0, 0, mimeType)).ETag;
     }
     // 初始化上传

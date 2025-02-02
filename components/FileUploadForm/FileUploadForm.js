@@ -302,6 +302,16 @@ export async function CoreUploadLogicV4(tasks) {
     let totalFailed = 0;
     this.progress.total_files = totalTasks; this.progress.current_files = 0;
     const symbol1 = Symbol('symbol1');
+    const cb = (chunk_id, _1, _2, pos, size) => {
+        if (chunk_id == 0) {
+            this.progress.status = '上传出错。 ' + _1 + ' ' + _2;
+        } else {
+            this.progress.status = (chunk_id > _1) ? `正在合并上传的文件` : `正在上传 chunk ${chunk_id} (共 ${_1} 个 chunk)`;
+            this.progress.current = +truncate_number(_2 * 100, 4);
+            this.progress.current_bytes = prettyPrintFileSize(pos);
+            this.progress.total_bytes = prettyPrintFileSize(size);
+        }
+    };
     for (const i of tasks) {
         try {
             this.progress.filename = i.key;
@@ -320,57 +330,26 @@ export async function CoreUploadLogicV4(tasks) {
                 });
                 throw symbol1;
             }
+
+            let blob;
             if (i.handle) {
-                const file = await i.handle.getFile();
-                this.progress.total_bytes = file.size;
-                const result = await uploadFile({
-                    path: i.key,
-                    blob: file,
-                    cb: (chunk_id, _1, _2, pos, size) => {
-                        if (chunk_id == 0) {
-                            this.progress.status = '上传出错。 ' + _1 + ' ' + _2;
-                        } else {
-                            this.progress.status = (chunk_id > _1) ? `正在合并上传的文件` : `正在上传 chunk ${chunk_id} (共 ${_1} 个 chunk)`;
-                            this.progress.current = +truncate_number(_2 * 100, 4);
-                            this.progress.current_bytes = prettyPrintFileSize(pos);
-                            this.progress.total_bytes = prettyPrintFileSize(size);
-                        }
-                    },
-                    endpoint: this.oss_name,
-                    bucket: this.bucket_name,
-                    region: this.region_name,
-                    username: this.username,
-                    usersecret: this.usersecret,
-                });
-                // console.log('上传成功:', i.key, result);
-                this.progress.status = `${i.key} 上传成功`;
-                if (!result) throw result;
+                blob = await i.handle.getFile();
+                this.progress.total_bytes = blob.size;
             } else {
+                blob = i.blob;
                 this.progress.total_bytes = i.blob.size;
-                const result = await uploadFile({
-                    path: i.key,
-                    blob: i.blob,
-                    cb: (chunk_id, _1, _2, pos, size) => {
-                        if (chunk_id == 0) {
-                            this.progress.status = '上传出错。 ' + _1 + ' ' + _2;
-                        } else {
-                            this.progress.status = (chunk_id > _1) ? `正在合并上传的文件` : `正在上传 chunk ${chunk_id} (共 ${_1} 个 chunk)`;
-                            this.progress.current = +truncate_number(_2 * 100, 4);
-                            this.progress.current_bytes = prettyPrintFileSize(pos);
-                            this.progress.total_bytes = prettyPrintFileSize(size);
-                        }
-                    },
-                    endpoint: this.oss_name,
-                    bucket: this.bucket_name,
-                    region: this.region_name,
-                    username: this.username,
-                    usersecret: this.usersecret,
-                });
-                // console.log('上传成功:', i.key, result);
-                this.progress.status = `${i.key} 上传成功`;
-                if (!result) throw result;
             }
-            totalUploaded++;
+            const result = await uploadFile({
+                path: i.key,
+                blob, cb,
+                endpoint: this.oss_name,
+                bucket: this.bucket_name,
+                region: this.region_name,
+                username: this.username,
+                usersecret: this.usersecret,
+            });
+            this.progress.status = `${i.key} 上传成功`;
+            if (!result) throw result;
         } catch (error) {
             if (error !== symbol1) {
                 totalFailed++;
@@ -378,11 +357,12 @@ export async function CoreUploadLogicV4(tasks) {
                 ElMessage.error(`文件 ${i.key} 上传失败: ${error}`);
             }
         }
+        totalUploaded++;
 
         // 更新UI
         this.progress.current_files = totalUploaded;
         this.progress.current = 100;
-        this.progress.total = +truncate_number(totalUploaded / totalTasks * 100, 4);
+        this.progress.total = +truncate_number((totalUploaded - totalFailed) / totalTasks * 100, 4);
         this.progress.status = '上传已完成。';
     }
     return {
