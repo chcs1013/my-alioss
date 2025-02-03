@@ -321,7 +321,8 @@ export async function CoreUploadLogicV4(tasks) {
             this.progress.current = +truncate_number(_2 * 100, 4);
             this.progress.current_bytes = prettyPrintFileSize(pos);
             this.progress.total_bytes = prettyPrintFileSize(size);
-            this.progress.total = +truncate_number((totalUploaded - totalFailed + ((_2) / totalTasks)) / totalTasks * 100, 4);
+            // 修正总进度：当前文件进度 _2(0~1) 直接累加
+            this.progress.total = +truncate_number((totalUploaded - totalFailed + ((_2))) / totalTasks * 100, 4);
         }
     };
     for (const i of tasks) {

@@ -1,4 +1,4 @@
-<div v-deep v-bind="$attrs" ref="my">
+<div v-deep v-bind="$attrs" ref="my" class="component-root">
     <h1 style="margin-top: 0;">下载文件</h1>
     <p style="margin-top: 0;" v-if="!files_to_download.length">在“文件列表”中选择文件以下载。</p>
     <div v-else-if="!hasInit" style="display: flex; flex-direction: column;">
@@ -17,7 +17,7 @@
                 <ElRadio value="2">手动指定</ElRadio>
             </ElRadioGroup>
         </label>
-        <div v-if="dltype === '1' && linkstart === '2'" style="margin-top: 5px; line-height: calc(1em + 20px);" v-deep><b>* 此功能不稳定！</b>除特殊需求外强烈不推荐使用此选项，<code v-deep>签名URL的起始时间，为避免时钟误差，允许向后偏移15分钟</code>，参见<a href="https://help.aliyun.com/zh/oss/developer-reference/add-signatures-to-urls" target="_blank" rel="noopener noreferrer">文档</a></div>
+        <div v-if="dltype === '1' && linkstart === '2'" style="line-height: calc(1em + 20px);" v-deep><b>* 此功能不稳定！</b>除特殊需求外强烈不推荐使用此选项，<code v-deep>签名URL的起始时间，为避免时钟误差，允许向后偏移15分钟</code>，参见<a href="https://help.aliyun.com/zh/oss/developer-reference/add-signatures-to-urls" target="_blank" rel="noopener noreferrer">文档</a></div>
         <div v-if="dltype === '1' && linkstart === '2'" style="margin-top: 5px;" v-deep>不早于&nbsp;<ElDatePicker v-model="linktime_start" type="datetime" placeholder="输入日期时间..." /></div>
         <label v-deep class="form-item" v-if="dltype === '1'">
             <span>链接有效期 (秒):</span>
@@ -26,7 +26,7 @@
         <div v-if="dltype === '1'" style="margin-top: 5px;" v-deep><ElSegmented v-model="linktime_prefilled" :options="linktime_prefill_options" size="small" /></div>
         <label v-deep class="form-item">
                 <span>使用文件预览器以避免兼容性问题<sup>**</sup>:</span>
-            <ElTooltip effect="dark" content="计费提示: 需获取对象信息，将按 GET 类请求计费，请按需使用" placement="top">
+            <ElTooltip effect="dark" :content="'计费提示: 需获取对象信息，将按 GET 类请求计费，请按需使用\n\n功能提示: 如果需要使用第三方软件查看内容，请不要选择此项'" placement="top">
                 <ElCheckbox v-model="useBuiltinPreview">使用</ElCheckbox>
             </ElTooltip>
         </label>
@@ -55,6 +55,9 @@
     </ElTable>
 
     <style>
+    .component-root>>> {
+        overflow: auto;
+    }
     .form-item>>> {
         margin-top: 0.5em;
         display: flex;
