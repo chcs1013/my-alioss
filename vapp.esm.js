@@ -3,6 +3,8 @@ main JavaScript file for myalioss
 
 */
 
+pg_statistics.ML = new Date() - ST;// module load
+
 
 import { reportFatalError } from './error-reporter.js';
 
@@ -44,6 +46,7 @@ await delay();
 
 updateLoadStat('Loading Vue Application');
 const Vue_App = (await import('./components/App/App.js')).default;
+pg_statistics.AL = new Date() - ST;// app load
 
 updateLoadStat('Creating Vue application');
 const app = createApp(Vue_App);
@@ -76,11 +79,13 @@ await delay(10);
 
 updateLoadStat('Mounting application to document');
 app.mount(myApp);
+pg_statistics.MNT = new Date() - ST;// app mount
 
 // break long tasks
 await delay();
 updateLoadStat('Finishing');
 globalThis.FinishLoad?.call(globalThis);
+pg_statistics.OK = new Date() - ST;// app ok
 
 
 

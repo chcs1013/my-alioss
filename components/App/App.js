@@ -44,6 +44,7 @@ const data = {
             files_to_download: [],
             has_enabled_full_mime_types: true,
             appVersion: '正在获取...',
+            appLoadTime: 0,
         }
     },
 
@@ -553,6 +554,8 @@ const data = {
                 this.appVersion = '0.0.0.0';
             }
         }).catch(() => this.appVersion = '0.0.0.0');
+
+        this.appLoadTime = pg_statistics.ASL = new Date() - ST;//App Script Loaded
     },
 
     template: await getHTML(import.meta.url, componentId),

@@ -51,6 +51,7 @@
             <div>调试: <a href="#" @click.prevent="inspectFileMimeType">文件类型检查器</a></div>
             <hr style="box-sizing: border-box; width: 100%;">
             <div>版本: {{appVersion}}</div>
+            <div>加载用时: {{+appLoadTime / 1000}}s</div>
         </div>
     </resizable-widget>
     <!-- oss基本信息展示 -->
