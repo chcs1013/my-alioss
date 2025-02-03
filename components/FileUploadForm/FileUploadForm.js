@@ -149,7 +149,7 @@ const data = {
                 // await Promise.all(proms);
 
                 // 重要性能优化
-                const handles = new Set();
+                const handles = new Map();
 
                 for (const i of proms) {
                     const handle = await i;
@@ -161,8 +161,9 @@ const data = {
                     handles.set(handle.name, handle);
                 }
                 // this.selectedHandles = handles;
-                this.selectedHandles.clear();
-                for (const i of handles) this.selectedHandles.add(i);
+                for (const [key, value] of handles) {
+                    this.selectedHandles.set(key, value);
+                }
             } finally {
                 this.loadingInstance.close();
                 this.loadingInstance = null;
@@ -172,10 +173,11 @@ const data = {
             window.showDirectoryPicker().then(async handle => {
                 this.loadingInstance = ElLoading.service({ lock: false, fullscreen: false, target: this.$el.parentElement });
                 try {
-                    const handles = new Set();
+                    const handles = new Map();
                     await this.traverseDirectory(handle, handle.name, handles);
-                    this.selectedHandles.clear();
-                    for (const i of handles) this.selectedHandles.add(i);
+                    for (const [key, value] of handles) {
+                        this.selectedHandles.set(key, value);
+                    }
                 } finally {
                     this.loadingInstance.close();
                     this.loadingInstance = null;
