@@ -10,17 +10,25 @@
                 <ElRadio value="2">永久链接 (需服务器允许公共访问)</ElRadio>
             </ElRadioGroup>
         </label>
+        <label v-deep class="form-item" v-if="dltype === '1'" v-show="!false">
+            <span>链接生效时间:</span>
+            <ElRadioGroup v-model="linkstart">
+                <ElRadio value="1">立即</ElRadio>
+                <ElRadio value="2">手动指定</ElRadio>
+            </ElRadioGroup>
+        </label>
+        <div v-if="dltype === '1' && linkstart === '2'" style="margin-top: 5px; line-height: calc(1em + 20px);" v-deep><b>* 此功能不稳定！</b>除特殊需求外强烈不推荐使用此选项，<code v-deep>签名URL的起始时间，为避免时钟误差，允许向后偏移15分钟</code>，参见<a href="https://help.aliyun.com/zh/oss/developer-reference/add-signatures-to-urls" target="_blank" rel="noopener noreferrer">文档</a></div>
+        <div v-if="dltype === '1' && linkstart === '2'" style="margin-top: 5px;" v-deep>不早于&nbsp;<ElDatePicker v-model="linktime_start" type="datetime" placeholder="输入日期时间..." /></div>
         <label v-deep class="form-item" v-if="dltype === '1'">
             <span>链接有效期 (秒):</span>
             <ElInput type="number" v-model="linktime" :min="1" :max="604800" placeholder="在 1~604800 之间" />
         </label>
-        <div v-if="dltype === '1'" style="margin-top: 5px;" v-deep><ElSegmented v-model="linktime_prefilled" :options="linktime_prefill_options" size="large"  /></div>
-        <label v-deep class="form-item" v-if="dltype === '1'" v-show="false">
-            <span>链接生效时间:</span>
-            <ElRadioGroup v-model="linkstart">
-                <ElRadio value="1">现在</ElRadio>
-                <ElRadio value="2">手动指定</ElRadio>
-            </ElRadioGroup>
+        <div v-if="dltype === '1'" style="margin-top: 5px;" v-deep><ElSegmented v-model="linktime_prefilled" :options="linktime_prefill_options" size="small" /></div>
+        <label v-deep class="form-item">
+                <span>使用文件预览器以避免兼容性问题<sup>**</sup>:</span>
+            <ElTooltip effect="dark" content="计费提示: 需获取对象信息，将按 GET 类请求计费，请按需使用" placement="top">
+                <ElCheckbox v-model="useBuiltinPreview">使用</ElCheckbox>
+            </ElTooltip>
         </label>
         <div class="form-item" v-deep>
             <ElButton type="primary" plain @click="getlink" size="large">获取链接</ElButton>
@@ -30,7 +38,8 @@
         <ElTableColumn type="selection" width="40" />
         <ElTableColumn prop="name" label="文件名" width="300" />
         <ElTableColumn prop="type" label="链接类型" width="110" />
-        <ElTableColumn prop="time" label="有效期" width="180" />
+        <ElTableColumn v-if="dltype === '1' && linkstart === '2'" prop="not_before" label="不早于" width="180" />
+        <ElTableColumn prop="time" :label="(dltype === '1' && linkstart === '2') ? '不晚于' : '有效期至'" width="180" />
         <ElTableColumn prop="link" label="文件链接" width="4000" />
         <ElTableColumn fixed="right" label="操作" width="80">
             <template #default="scope">
@@ -54,6 +63,12 @@
     }
     .form-item[v-deep] > span:nth-child(1) {
         margin-right: 0.5em;
+    }
+    code>>> {
+        padding: 5px;
+        background: #f0f0f0;
+        border-radius: 5px;
+        border: 1px solid #aaa;
     }
     </style>
 </div>

@@ -321,6 +321,7 @@ export async function CoreUploadLogicV4(tasks) {
             this.progress.current = +truncate_number(_2 * 100, 4);
             this.progress.current_bytes = prettyPrintFileSize(pos);
             this.progress.total_bytes = prettyPrintFileSize(size);
+            this.progress.total = +truncate_number((totalUploaded - totalFailed + ((_2) / totalTasks)) / totalTasks * 100, 4);
         }
     };
     for (const i of tasks) {

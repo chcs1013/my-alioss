@@ -32,6 +32,56 @@ function truncate_number(input, digits) {
     // 拼接结果
     return digits === 0 ? integerPart : `${integerPart}.${decimalPart}`;
 }
+// BE CAREFUL:: THIS FUNCTION HAS NOT BEEN TESTED!
+async function send_request_with_callback(request, options, callback = null) {
+    // 复制原始 options 对象，避免直接修改原对象
+    const fetchOptions = { ...options };
+
+    // 如果存在回调函数，尝试跟踪进度
+    if (typeof callback === 'function') {
+        const originalBody = fetchOptions.body;
+
+        // 处理 Blob/File 类型的 body（如文件上传）
+        if (originalBody instanceof Blob) {
+            const total = originalBody.size;  // 总字节数
+            let loaded = 0;                   // 已上传字节数
+
+            // 创建 TransformStream 用于跟踪读取进度
+            const progressStream = new TransformStream({
+                transform(chunk, controller) {
+                    loaded += chunk.byteLength;  // 更新已上传字节数
+                    queueMicrotask(() => callback(loaded, total));     // 触发回调
+                    controller.enqueue(chunk);   // 将数据块传递下去
+                }
+            });
+
+            // 将原始 Blob 流通过 progressStream 转换
+            const originalStream = originalBody.stream();
+            fetchOptions.body = originalStream.pipeThrough(progressStream);
+        }
+
+        // 可选：处理其他类型的流（如 ReadableStream）
+        else if (originalBody instanceof ReadableStream) {
+            let loaded = 0;
+            const progressStream = new TransformStream({
+                transform(chunk, controller) {
+                    loaded += chunk.byteLength;
+                    queueMicrotask(() => callback(loaded, null));  // 总大小未知，传递 null
+                    controller.enqueue(chunk);
+                }
+            });
+            fetchOptions.body = originalBody.pipeThrough(progressStream);
+        }
+
+        // TypeError: Failed to execute 'fetch' on 'Window': The `duplex` member must be specified for a request with a streaming body
+        fetchOptions.duplex = 'half';
+    }
+
+    // 发送请求并返回响应
+    const response = await fetch(request, fetchOptions);
+    return response;
+}
+const fetch2 = fetch; // aliyun not supported
 async function init_upload(path, endpoint, bucket, region, username, usersecret, mimeType) {
     const url = new URL(path, endpoint);
     const additionalHeadersList = { 'content-disposition': 'inline' };
@@ -48,7 +98,7 @@ async function init_upload(path, endpoint, bucket, region, username, usersecret,
     const value = xml2json(await resp.text());
     return value.UploadId;
 }
-async function send(path, blob, pos, endpoint, bucket, region, username, usersecret, chunk_id, UploadId, mimeType = '') {
+async function send(path, blob, pos, endpoint, bucket, region, username, usersecret, chunk_id, UploadId, mimeType = '', callback = null) {
     const url = new URL(path, endpoint);
     const additionalHeadersList = { 'content-disposition': 'inline' };
     if (blob.type) {
@@ -60,11 +110,11 @@ async function send(path, blob, pos, endpoint, bucket, region, username, usersec
     if (!chunk_id) {
         // signle part
         const signed_url = await sign_url(url, { access_key_id: username, access_key_secret: usersecret, bucket, region, method: 'PUT', expires: 3600, additionalHeadersList });
-        const response = await fetch(signed_url, {
+        const response = await fetch2(signed_url, {
             method: 'PUT',
             body: blob,
             headers: additionalHeadersList,
-        });
+        }, callback);
         if (!response.ok) throw new Error('Failed to upload block ' + chunk_id + ' at position ' + pos + '. Error: ' + response.status + ' ' + response.statusText);
         await response.text(); // 等待请求完成
 
@@ -79,11 +129,11 @@ async function send(path, blob, pos, endpoint, bucket, region, username, usersec
 
     // core upload
     // ElMessage.success('headers=' + JSON.stringify(additionalHeadersList, null, 2));
-    const response = await fetch(signed_url, {
+    const response = await fetch2(signed_url, {
         method: 'PUT',
         body: blob,
         headers: additionalHeadersList,
-    });
+    }, callback);
     if (!response.ok) throw new Error('Failed to upload block ' + chunk_id + ' at position ' + pos + '. Error: ' + response.status + ' ' + response.statusText);
     await response.text(); // 等待请求完成
 
@@ -129,27 +179,29 @@ async function uploadFile({ path: composedPath, blob, cb, endpoint, bucket, regi
         return new Promise(resolve => setTimeout(resolve, ms));
     }
     const size = blob.size;
+    const total_chunks = Math.ceil(size / chunkSize);
     let pos = 0, chunk_id = 0;
     let lastStep = 0, step = 0, errorCount = 0;
     composedPath = (encodeURIComponent(composedPath).replace(/\%2F/ig, '/'));
+    const wrappedCallback = (current, total) => {
+        if (!cb) return;
+        current = pos + current; // 校正
+        cb(chunk_id + 1, total_chunks, (current / size), current, size);
+    };
     // 获取扩展名对应的MIME Type
-    // ElMessage.success('composedPath=' + composedPath);
     const extName = getFileExtension(composedPath);
-    // ElMessage.success('extName=' + extName);
     const mimeType = blob.type ? blob.type : (extName ?
         GetMimeTypeByExtension(extName) :
         GetMimeTypeByExtension());
-    // ElMessage.success('mimeType=' + mimeType);
     // 如果文件小于指定大小，则直接上传，节省请求次数
     if (size < chunkMinFileSize) {
         cb && cb(1, 1, 0, 0, size);
-        return (await send(composedPath, blob, 0, endpoint, bucket, region, username, usersecret, 0, 0, mimeType)).ETag;
+        return (await send(composedPath, blob, 0, endpoint, bucket, region, username, usersecret, 0, 0, mimeType, wrappedCallback)).ETag;
     }
     // 初始化上传
     const UploadId = await init_upload(composedPath, endpoint, bucket, region, username, usersecret, mimeType);
     if (!UploadId) throw new Error('Failed to get UploadId. This seems like an internal error?');
     const etags = [];
-    const total_chunks = Math.ceil(blob.size / chunkSize);
     cb && cb(1, total_chunks, 0, 0, size);
     while (pos < size) {
         ++chunk_id;
@@ -157,7 +209,7 @@ async function uploadFile({ path: composedPath, blob, cb, endpoint, bucket, regi
         const newBlob = blob.slice(pos, len);
         // console.log('Uploading', pos, len, 'of', size, 'data', name, 'blob', newBlob);
         try {
-            const { crc64, ETag } = await send(composedPath, newBlob, pos, endpoint, bucket, region, username, usersecret, chunk_id, UploadId, mimeType);
+            const { crc64, ETag } = await send(composedPath, newBlob, pos, endpoint, bucket, region, username, usersecret, chunk_id, UploadId, mimeType, wrappedCallback);
             // TODO: Check CRC64
             etags.push(ETag);
         }

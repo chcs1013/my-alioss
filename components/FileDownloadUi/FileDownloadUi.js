@@ -14,10 +14,12 @@ const data = {
             linktime: '',
             linktime_prefilled: '',
             linktime_prefill: {
-                '1分钟': 60, '5分钟': 300, '10分钟': 600, '1小时': 3600, '1天': 86400, '7天': 604800
+                '1分钟': 60, '5分钟': 300, '10分钟': 600, '30分钟': 1800, '1小时': 3600, '6小时': 3600*6, '1天': 86400, '3天': 86400*3, '7天': 604800
             },
             linkstart: '1',
+            linktime_start: null,
             loadingInstance: null,
+            useBuiltinPreview: false,
         }
     },
 
@@ -46,6 +48,20 @@ const data = {
             if (!this.linktime && this.dltype === '1') return ElMessage.error('必须输入链接有效期');
             this.loadingInstance = ElLoading.service({ lock: false, fullscreen: false, target: this.$refs.my });
             try {
+                const common_params = {
+                    access_key_id: this.username,
+                    access_key_secret: this.usersecret,
+                    expires: +this.linktime,
+                    bucket: this.bucket,
+                    region: this.region,
+                };
+                if (this.dltype === '1' && this.linkstart === '2' && this.linktime_start) {
+                    // 签名URL的起始时间，为避免时钟误差，允许向后偏移15分钟
+                    //     -- https://help.aliyun.com/zh/oss/developer-reference/add-signatures-to-urls
+                    common_params.date = new Date(new Date(this.linktime_start).getTime() + 15 * 60000);
+                    this.linktime += 15 * 60000;
+                }
+                const not_before = this.linktime_start.toLocaleString();
                 for (const i of this.files_to_download) {
                     const url = new URL((encodeURIComponent(i.name).replace(/\%2F/ig, '/')), this.oss_name);
                     if (this.dltype === '2') {
@@ -53,16 +69,25 @@ const data = {
                         i.type = '永久链接';
                         continue;
                     }
-                    const signed_url = await sign_url(url, {
-                        access_key_id: this.username,
-                        access_key_secret: this.usersecret,
-                        expires: +this.linktime,
-                        bucket: this.bucket,
-                        region: this.region,
-                    });
-                    i.link = signed_url;
+                    const signed_url = await sign_url(url, common_params);
+                    if (this.useBuiltinPreview) {
+                        const previewLink = new URL('./preview.html', location.href);
+                        const meta = new URL('/', previewLink);
+                        meta.searchParams.set('url', btoa(signed_url));
+                        // 获取类型
+                        const req = await sign_url(url, {
+                            method: 'HEAD',
+                            ...common_params
+                        });
+                        const ctype =  (await fetch(req, { method: 'HEAD' })).headers.get('content-type').split('/')[0];
+                        meta.searchParams.set('type', ctype);
+                        previewLink.hash = '#/' + meta.search;
+                        i.link = previewLink.href;
+                    }
+                    else i.link = signed_url;
+                    if (this.linkstart === '2') i.not_before = not_before;
                     i.type = '临时链接';
-                    i.time_data = new Date(new Date().getTime() + 1000 * (+this.linktime))
+                    i.time_data = new Date(((this.linkstart === '2') ? new Date(this.linktime_start) : new Date()).getTime() + 1000 * (+this.linktime));
                     i.time = i.time_data.toLocaleString();
                 }
                 this.hasInit = true;
@@ -119,6 +144,8 @@ const data = {
             link: '',
         }));
         this.$emit('update:modelValue', []);
+
+        this.linktime_start = new Date();
     },
 
     watch: {

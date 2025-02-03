@@ -26,7 +26,8 @@ export async function getAuthorizationHeader(accessKeyId, secret, stringToSign) 
     return `OSS ${accessKeyId}:${signature}`;
 }
 
-export function ISO8601(date = new Date()) { // e.g.20250201T053008Z
+export function ISO8601(date) { // e.g.20250201T053008Z
+    if (!date) date = new Date(); // now
     const isoString = date.toISOString();
     // 提取需要的部分并拼接
     return (
@@ -102,12 +103,14 @@ export async function sign_url(user_url, {
     expires = 60,
     bucket = null, region = null,
     method = "GET",
+    date: userDate = null,
 } = {}) {
     // if (!base_url && (user_url && user_url.origin)) base_url = user_url.origin;
     const url = new URL(user_url, base_url);
     url.pathname = makePathNameStandard(url.pathname);
     // 初始化
-    const date = ISO8601();
+    if (!userDate) userDate = new Date();
+    const date = ISO8601(userDate);
     url.searchParams.set('x-oss-signature-version', 'OSS4-HMAC-SHA256')
     // 参数检查
     if ((expires < 1 || expires > 604800)) throw new TypeError('Expires must between 1 and 604800');
@@ -168,6 +171,7 @@ export async function sign_header(user_url, {
     url.pathname = makePathNameStandard(url.pathname);
     let result = 'OSS4-HMAC-SHA256 Credential=';
     // 初始化
+    if (!userDate) userDate = new Date();
     const date = ISO8601(userDate);
     // 参数检查
     if ((expires < 1 || expires > 604800)) throw new TypeError('Expires must between 1 and 604800');
