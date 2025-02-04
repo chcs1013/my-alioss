@@ -1,6 +1,6 @@
 import { getHTML } from '@/assets/js/browser_side-compiler.js';
 import { ElMessage, ElMessageBox, ElLoading } from 'element-plus';
-import { addCSS as LoadCSS } from '@/BindMove.js';
+import { addCSS as LoadCSS } from '@/modules/util/BindMove.js';
 import { xml2json } from '../xml2json/xml2json.js';
 import { RefreshLeft, Fold } from 'icons-vue';
 import { defineAsyncComponent } from 'vue';

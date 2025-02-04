@@ -21,7 +21,7 @@ export function delay(timeout = 0) {
 updateLoadStat('Waiting');
 await new Promise(resolve => setTimeout(resolve));
 
-import { registerResizableWidget } from './BindMove.js';
+import { registerResizableWidget } from './modules/util/BindMove.js';
 registerResizableWidget();
 
 // break long tasks
@@ -33,7 +33,7 @@ import { createApp } from 'vue';
 // break long tasks
 await delay();
 
-import { addCSS } from './BindMove.js';
+import { addCSS } from './modules/util/BindMove.js';
 
 // break long tasks
 await delay();
@@ -148,6 +148,21 @@ queueMicrotask(() => {
 
             CreateDynamicResizableView(frame, 'External Link', 720, 1000);
         });
+    });
+});
+
+
+
+// 预加载子组件，提升用户体验
+setTimeout(() => {
+    const preload_list = [
+        '@/components/FileUploadForm/FileUploadForm.js',
+        '@/components/FileDownloadUi/FileDownloadUi.js',
+    ];
+    for (const i of preload_list) import(i).then(() => {
+        console.info('[preload]', 'Module has been successfully prefetched:', i);
+    }).catch(error => {
+        console.warn('[preload]', 'Failed to prefetch module:', i, error);
     });
 });
 

@@ -2,7 +2,10 @@ import { getHTML } from '@/assets/js/browser_side-compiler.js';
 import { ElMessage, ElLoading, ElMessageBox } from 'element-plus';
 import { Delete, RefreshLeft } from 'icons-vue';
 import { prettyPrintFileSize } from '@/assets/js/fileinfo.js';
+import { defineAsyncComponent } from 'vue';
 
+// const TextEdit = defineAsyncComponent(() => import('../TextEdit/TextEdit.js'));
+import TextEdit from '../TextEdit/TextEdit.js';
 
 const componentId = 'd529d06e-d70d-4d9a-8eb6-19ad0300e01e';
 
@@ -12,6 +15,7 @@ const data = {
             uploadForm: {},
             selectedFiles: new Map(),
             selectedHandles: new Map(),
+            selectedInfo: [],
             // isDragging: false,
             isDropping: false,
             useNewUploader: true,
@@ -44,23 +48,20 @@ const data = {
 
     components: {
         Delete, RefreshLeft,
+        TextEdit,
     },
 
     methods: {
-        update() {
-            this.selectedFiles.clear();
-
-            try { this.uploadForm.remotePath = decodeURIComponent(this.uploadForm.remotePath) } catch { }
-        },
-
         updateFileList() {
             for (const i of this.$refs.localFile.files) {
                 this.selectedFiles.set(i.name, i);
             }
             this.$refs.localFile.value = null;
+            queueMicrotask(() => this.updateInfo());
         },
 
         removeItem(opt) {
+            queueMicrotask(() => this.updateInfo());
             if (opt === true) {
                 return this.selectedFiles.clear();
             }
@@ -68,6 +69,7 @@ const data = {
         },
 
         removeHandle(opt) {
+            queueMicrotask(() => this.updateInfo())
             if (opt === true) {
                 return this.selectedHandles.clear();
             }
@@ -99,6 +101,7 @@ const data = {
                 for (const i of arr) {
                     this.selectedHandles.set(i.name, i);
                 }
+                queueMicrotask(() => this.updateInfo());
             }).catch(() => { });
         },
         async traverseDirectory(directoryHandle, currentPath = '', handles) {
@@ -164,6 +167,7 @@ const data = {
                 for (const [key, value] of handles) {
                     this.selectedHandles.set(key, value);
                 }
+                queueMicrotask(() => this.updateInfo());
             } finally {
                 this.loadingInstance.close();
                 this.loadingInstance = null;
@@ -178,6 +182,7 @@ const data = {
                     for (const [key, value] of handles) {
                         this.selectedHandles.set(key, value);
                     }
+                    queueMicrotask(() => this.updateInfo());
                 } finally {
                     this.loadingInstance.close();
                     this.loadingInstance = null;
@@ -207,6 +212,22 @@ const data = {
             ev.dataTransfer.dropEffect = dropEffect;
             return true;
         },
+        updateInfo() {
+            this.selectedInfo.length = 0;
+            for (const [key, value] of (this.useNewUploader ? this.selectedHandles : this.selectedFiles).entries()) {
+                this.selectedInfo.push({
+                    id: key,
+                    name: value.user_id || (value.is_empty_directory ?
+                        (value.fullpath + '/') : (value.fullpath || value.name)),
+                });
+            }
+        },
+        updateItemName(id, newValue) {
+            const value = this.selected.get(id);
+            value.user_id = newValue;
+            this.selected.set(id, value);
+            queueMicrotask(() => this.updateInfo());
+        },
 
         async doNewUploadV2() {
             this.$emit('update:is_loading', true);
@@ -223,7 +244,7 @@ const data = {
                 if (this.useNewUploader) {
                     for (let i of this.selectedHandles.values()) {
                         tasks.push({
-                            key: (std_path + (i.fullpath || i.name)),
+                            key: (std_path + (i.user_id || i.fullpath || i.name).replace(/\\/g, '/')),
                             handle: i,
                             is_empty_directory: i.is_empty_directory,
                         });
@@ -231,7 +252,7 @@ const data = {
                 } else {
                     for (let i of this.selectedFiles.values()) {
                         tasks.push({
-                            key: (std_path + i.name),
+                            key: (std_path + (i.user_id || i.name).replace(/\\/g, '/')),
                             blob: new Blob([i]),
                         });
                     }
@@ -258,21 +279,6 @@ const data = {
         selected() {
             void(this.selectedHandles); void(this.selectedFiles);
             return this.useNewUploader ? this.selectedHandles : this.selectedFiles;
-        },
-        selectedFilesInfo() {
-            const r = [];
-            for (const i of this.selectedFiles.values()) {
-                r.push(i.name);
-            }
-            return r;
-        },
-        selectedHandlesInfo() {
-            const r = [];
-            for (const i of this.selectedHandles.values()) {
-                if (i.is_empty_directory) r.push(i.fullpath + '/');
-                else r.push(i.fullpath || i.name);
-            }
-            return r;
         },
         fsapiNotSupported() {
             return !(window.showOpenFilePicker && window.showDirectoryPicker)

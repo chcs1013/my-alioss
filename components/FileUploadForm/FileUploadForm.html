@@ -58,11 +58,12 @@
 
         <div style="border: 1px solid #ccc; border-radius: 10px; margin-bottom: 18px; padding: 10px;">
             <div v-deep class="chosen-header">
-                <div><span>已选择的文件 ({{selected.size}})</span><br><span style="font-size: small; color: red;">* 切换到文件列表将导致当前选择丢失!</span></div>                <span style="padding-bottom:10px"><ElButton plain type="danger" :disabled="isLoading" @click="useNewUploader ? removeHandle(true) : removeItem(true)"><ElIcon><Delete /></ElIcon></ElButton></span>
+                <div><span>已选择的文件 ({{selected.size}}) (点击以重命名)</span><br><span style="font-size: small; color: red;">* 切换到文件列表将导致当前选择丢失!</span></div>
+                <span style="padding-bottom:10px"><ElButton plain type="danger" :disabled="isLoading" @click="useNewUploader ? removeHandle(true) : removeItem(true)"><ElIcon><Delete /></ElIcon></ElButton></span>
             </div>
-            <div v-if="selected.size" v-for="item in (useNewUploader ? selectedHandlesInfo : selectedFilesInfo)" class="file-item" v-deep>
-                <span>{{item}}</span>
-                <span><ElButton plain type="danger" :disabled="isLoading" @click="useNewUploader ? removeHandle(item) : removeItem(item)"><ElIcon><Delete /></ElIcon></ElButton></span>
+            <div v-if="selected.size" v-for="item in selectedInfo" class="file-item" v-deep>
+                <TextEdit v-deep :modelValue="item.name" @update:modelValue="updateItemName(item.id, $event)"></TextEdit>
+                <span><ElButton plain v-deep class="btn-delete-item" type="danger" :disabled="isLoading" @click="useNewUploader ? removeHandle(item) : removeItem(item)"><ElIcon><Delete /></ElIcon></ElButton></span>
             </div>
             <div v-else>Nothing</div>
         </div>
@@ -207,5 +208,8 @@ form>>> {
 }
 .progress-line[v-deep] > span {
     padding-right: 1em;
+}
+.btn-delete-item>>> {
+    margin-left: 0.5em;
 }
 </style>
