@@ -47,7 +47,7 @@ const data = {
         region_name: String,
     },
 
-    emits: ['update:active_panel', 'update:has_enabled_full_mime_types', 'update:is_loading'],
+    emits: ['update:active_panel', 'update:has_enabled_full_mime_types', 'update:is_loading', 'goPath'],
 
     components: {
         Delete, RefreshLeft,
@@ -55,9 +55,15 @@ const data = {
     },
 
     methods: {
-        updateFileList() {
+        confirmCancel() {
+            this.$emit('update:active_panel', 'file');
+            this.$emit('update:is_loading', false);
+            this.$emit('goPath'); // 刷新列表
+        },
+
+        addFileFromInput() {
             if (this.selectedInternal_fname2id.has(i.name)) {
-                this.removeItem(this.selectedInternal_fname2id.get(i.name), i.name);
+                this.removeApi(this.selectedInternal_fname2id.get(i.name), i.name);
             }
             for (const i of this.$refs.localFile.files) {
                 const genkey = ++this.selectedInternal_IK;
@@ -68,30 +74,17 @@ const data = {
             queueMicrotask(() => this.updateInfo());
         },
 
-        removeItem(opt, itemName) {
+        removeApi(opt, itemName) {
             queueMicrotask(() => this.updateInfo());
             if (opt === true) {
                 this.selectedInternal_fname2id.clear();
-                return this.selectedFiles.clear();
+                return this.selected.clear();
             }
             this.selectedInternal_fname2id.delete(itemName);
-            this.selectedFiles.delete(opt);
+            this.selected.delete(opt);
         },
-
-        removeHandle(opt, itemName) {
-            queueMicrotask(() => this.updateInfo())
-            if (opt === true) {
-                this.selectedInternal_fname2id.clear();
-                return this.selectedHandles.clear();
-            }
-            this.selectedInternal_fname2id.delete(itemName);
-            this.selectedHandles.delete(opt);
-        },
-
-        confirmCancel() {
-            this.$emit('update:active_panel', 'file');
-            this.$emit('update:is_loading', false);
-        },
+        removeItem(opt, itemName) { console.error('[FileUploadForm]', 'deprecated') },   // 过会再删，防止莫名其妙bug
+        removeHandle(opt, itemName) { console.error('[FileUploadForm]', 'deprecated') }, // 过会再删，防止莫名其妙bug
 
         async get_enabled_full_mime_types() {
             this.$emit('update:is_loading', true);
@@ -112,7 +105,7 @@ const data = {
             }).then(arr => {
                 for (const i of arr) {
                     if (this.selectedInternal_fname2id.has(i.name)) {
-                        this.removeHandle(this.selectedInternal_fname2id.get(i.name), i.name);
+                        this.removeApi(this.selectedInternal_fname2id.get(i.name), i.name);
                     }
                     const genkey = ++this.selectedInternal_IK;
                     this.selectedInternal_fname2id.set(i.name, genkey);
@@ -183,7 +176,7 @@ const data = {
                 // this.selectedHandles = handles;
                 for (const [key, value] of handles) {
                     if (this.selectedInternal_fname2id.has(value.name)) {
-                        this.removeHandle(this.selectedInternal_fname2id.get(value.name), value.name);
+                        this.removeApi(this.selectedInternal_fname2id.get(value.name), value.name);
                     }
                     const genkey = ++this.selectedInternal_IK;
                     this.selectedInternal_fname2id.set(key, genkey);
@@ -203,7 +196,7 @@ const data = {
                     await this.traverseDirectory(handle, handle.name, handles);
                     for (const [key, value] of handles) {
                         if (this.selectedInternal_fname2id.has(value.name)) {
-                            this.removeHandle(this.selectedInternal_fname2id.get(value.name), value.name);
+                            this.removeApi(this.selectedInternal_fname2id.get(value.name), value.name);
                         }
                         const genkey = ++this.selectedInternal_IK;
                         this.selectedInternal_fname2id.set(key, genkey);

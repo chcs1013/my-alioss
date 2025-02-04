@@ -30,7 +30,7 @@
             <ElButton v-show="!isDragging" style="flex: 1" @click="$refs.localFile.click()">选择文件</ElButton>
             <input v-deep type="file" ref="localFile" :disabled="isLoading"
                 @dragleave.self="isDragging=false"
-                @change="updateFileList"
+                @change="addFileFromInput"
                 :hidden="!isDragging"
                 style="flex: 1" multiple />
         </ElFormItem>
@@ -79,7 +79,7 @@
 
         <ElCard v-deep style="margin-top: 0.5em;">
             <template #header>上传进度</template>
-            <div v-deep class="progress-line"><span>总进度</span><ElProgress style="flex: 1;" :percentage="progress.total" striped striped-flow></ElProgress></div>
+            <div v-deep class="progress-line"><span>总体进度</span><ElProgress style="flex: 1;" :percentage="progress.total" striped striped-flow></ElProgress></div>
             <div v-deep class="progress-line"><span>当前进度</span><ElProgress style="flex: 1;" :percentage="progress.current" striped striped-flow></ElProgress></div>
         </ElCard>
 
@@ -109,7 +109,7 @@
         <div v-if="isDone" v-deep style="margin-top: 1em; font-size: large;">
             <span style="font-family: initial;">上传已完成, 共 {{ progress.done_total }}, {{ progress.done_success }} 成功, {{ progress.done_failure }} 失败, 用时 {{progress.timeCost / 1e3}} 秒。</span>
         </div>
-        <div v-if="isDone"><span>* 需要手动点击&nbsp;</span><ElIcon><RefreshLeft /></ElIcon><span>&nbsp;，新文件才能在文件列表中显示！</span></div>
+        <div v-if="isDone"><span>* 需要点击下面的&nbsp;</span><ElButton disabled>完成</ElButton><span>&nbsp;按钮，新文件才能在文件列表中显示！</span></div>
 
         <div v-if="isDone" style="margin-top: 1em;" v-deep>
             <ElButton type="primary" plain @click="confirmCancel">完成</ElButton>

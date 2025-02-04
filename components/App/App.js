@@ -69,6 +69,7 @@ const data = {
                 this.isConnected = false;
                 this.listdata.length = 0;
                 this.bucket_name = '';
+                this.active_panel = 'file';
                 this.$refs.lst?.update();
                 return;
             }
@@ -455,6 +456,19 @@ const data = {
                 ElMessage.error('无法生成预加载数据。');
             }
         },
+        async applyPreloadData() {
+            try {
+                const { value } = await ElMessageBox.prompt('请输入数据。温馨提示：确认后已有数据将被覆盖！', '预加载数据', {
+                    confirmButtonText: '覆盖',
+                    cancelButtonText: '不要继续',
+                });
+                sessionStorage.setItem('Project:MyAliOSS;Type:User;Key:Preload', value);
+                ElMessage.success('请稍候...');
+                location.reload();
+            } catch (e) {
+                (e !== 'cancel') && ElMessage.error('无法处理预加载数据。');
+            }
+        },
         executeDownloadFn(paths) {
             this.active_panel = 'download';
             this.files_to_download = paths;
@@ -497,7 +511,7 @@ const data = {
             } catch { }
             
             const url = new URL(location.href);
-            const preload = url.searchParams.get('preload');
+            const preload = url.searchParams.get('preload') || sessionStorage.getItem('Project:MyAliOSS;Type:User;Key:Preload');
             if (preload) try {
                 const json = JSON.parse(atob(preload));
                 if (json.oss_name) this.oss_name = json.oss_name;
@@ -528,6 +542,7 @@ const data = {
                 console.info('[preload]', 'Preload data has been applied');
             } catch (e) {
                 console.warn('[preload]', 'Invalid preload data has been found: ', preload, '\n Falling back to normal mode.');
+                ElMessage.warn('无法处理的预加载数据。');
             }
             if (!url.searchParams.has('debug')) import('./replacelocationparams.js');
 
@@ -543,6 +558,12 @@ const data = {
                 if (endpoint_str) {
                     this.oss_name = endpoint_str;
                 }
+            });
+
+            queueMicrotask(() => {
+                if (sessionStorage.getItem('Project:MyAliOSS;Type:User;Key:Preload')) {
+                    sessionStorage.removeItem('Project:MyAliOSS;Type:User;Key:Preload');
+                } 
             });
         });
 

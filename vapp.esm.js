@@ -6,7 +6,6 @@ main JavaScript file for myalioss
 pg_statistics.ML = new Date() - ST;// module load
 
 
-import { reportFatalError } from './error-reporter.js';
 
 const updateLoadStat = (globalThis.ShowLoadProgress) ? globalThis.ShowLoadProgress : function () { };
 
@@ -29,11 +28,6 @@ await delay();
 
 updateLoadStat('Loading Vue.js');
 import { createApp } from 'vue';
-
-// break long tasks
-await delay();
-
-import { addCSS } from './modules/util/BindMove.js';
 
 // break long tasks
 await delay();

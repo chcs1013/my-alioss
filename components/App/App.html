@@ -48,6 +48,7 @@
             <hr style="box-sizing: border-box; width: 100%;">
             <div>使用 Vue.JS。<a href="./copyright/" @click.prevent="((loadCopyRightFrame = true), ($refs.copyrightBox.open = true))">点击查看版权信息。</a></div>
             <div>调试: <a href="#" @click.prevent="generatePreloadData">根据当前配置信息生成预加载数据</a></div>
+            <div>调试: <a href="#" @click.prevent="applyPreloadData">输入预加载数据以应用设置</a></div>
             <div>调试: <a href="#" @click.prevent="inspectFileMimeType">文件类型检查器</a></div>
             <hr style="box-sizing: border-box; width: 100%;">
             <div>版本: {{appVersion}}</div>
@@ -135,34 +136,12 @@
             v-model:listdata="listdata"
             :username="username" :usersecret="usersecret" :oss_name="oss_name" :bucket="bucket_name" :region="region_name"
             ></FileList>
-        <!-- <div class="seperator" style="border-left: 1px solid #ccc;"></div>
-        <div class="right-panel" v-deep style="flex: 1;"></div> -->
         <FileUploadForm v-deep class="my-panel" v-if="active_panel === 'upload'" 
             v-model:active_panel="active_panel" v-model:is_loading="isLoading"
+            @goPath="goPath"
             :path="path" v-model:has_enabled_full_mime_types="has_enabled_full_mime_types"
             :username="username" :usersecret="usersecret" :oss_name="oss_name" :bucket_name="bucket_name" :region_name="region_name"
             ></FileUploadForm>
-        <!-- <div class="my-panel" v-deep v-if="active_panel === 'upload'"> -->
-            <!-- <h1 style="margin-top: 0;">上传文件</h1> -->
-            <!-- <ElUpload
-                ref="upload"
-                :action="uploadUrl"
-                :data="uploadData"
-                :file-list="uploadFileList"
-                :on-remove="handleUploadFileRemove"
-                :on-success="handleUploadFileSuccess"
-                :on-error="handleUploadFileError"
-                :on-progress="handleUploadFileProgress"
-                :before-upload="handleUploadFileBefore"
-                :on-exceed="handleUploadFileExceed"
-                :limit="1"
-                :show-file-list="true"
-                :auto-upload="false"
-                :on-change="handleUploadFileChange"
-            />
-            <ElButton @click="uploadFile" type="primary">上传</ElButton> -->
-            <!-- <file-picker-ui ref="file_picker" multiple required v-deep></file-picker-ui> -->
-        <!-- </div> -->
         <FileDownloadUi class="my-panel" v-deep v-if="active_panel === 'download'"
             v-model="files_to_download"
             :username="username" :usersecret="usersecret" :oss_name="oss_name" :bucket="bucket_name" :region="region_name"
@@ -171,10 +150,6 @@
 
     <template v-if="!isConnected">
         <div style="display: flex; flex-direction: column; overflow: hidden; height: 100%; padding: 1em;">
-            <!-- <div style="font-size: x-large;"><b>获取 Bucket 列表</b></div>
-            <div><a href="#" @click.prevent="getBuckets">点击获取 Bucket 列表</a></div>
-            <div><b>Bucket 列表</b></div>
-            <div><ul><li v-for="item in buckets">{{item.name}}</li></ul></div> -->
             <h2>请输入有效的 Endpoint 地址。</h2>
             <div style="display: flex; align-items: center;">OSS:&nbsp;<ElInput v-model="oss_name" /></div>
             <p v-deep class="main-feature flexible-feature">前往页面上方以登录。</p>
