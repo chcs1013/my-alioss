@@ -13,8 +13,11 @@ const data = {
     data() {
         return {
             uploadForm: {},
+            selectedInternal_IK: 0, // internal key
+            // 以下两个Map的key不再具有实际意义
             selectedFiles: new Map(),
             selectedHandles: new Map(),
+            selectedInternal_fname2id: new Map(),
             selectedInfo: [],
             // isDragging: false,
             isDropping: false,
@@ -53,26 +56,35 @@ const data = {
 
     methods: {
         updateFileList() {
+            if (this.selectedInternal_fname2id.has(i.name)) {
+                this.removeItem(this.selectedInternal_fname2id.get(i.name), i.name);
+            }
             for (const i of this.$refs.localFile.files) {
-                this.selectedFiles.set(i.name, i);
+                const genkey = ++this.selectedInternal_IK;
+                this.selectedInternal_fname2id.set(i.name, genkey);
+                this.selectedFiles.set(genkey, i);
             }
             this.$refs.localFile.value = null;
             queueMicrotask(() => this.updateInfo());
         },
 
-        removeItem(opt) {
+        removeItem(opt, itemName) {
             queueMicrotask(() => this.updateInfo());
             if (opt === true) {
+                this.selectedInternal_fname2id.clear();
                 return this.selectedFiles.clear();
             }
+            this.selectedInternal_fname2id.delete(itemName);
             this.selectedFiles.delete(opt);
         },
 
-        removeHandle(opt) {
+        removeHandle(opt, itemName) {
             queueMicrotask(() => this.updateInfo())
             if (opt === true) {
+                this.selectedInternal_fname2id.clear();
                 return this.selectedHandles.clear();
             }
+            this.selectedInternal_fname2id.delete(itemName);
             this.selectedHandles.delete(opt);
         },
 
@@ -99,7 +111,12 @@ const data = {
                 multiple: true,
             }).then(arr => {
                 for (const i of arr) {
-                    this.selectedHandles.set(i.name, i);
+                    if (this.selectedInternal_fname2id.has(i.name)) {
+                        this.removeHandle(this.selectedInternal_fname2id.get(i.name), i.name);
+                    }
+                    const genkey = ++this.selectedInternal_IK;
+                    this.selectedInternal_fname2id.set(i.name, genkey);
+                    this.selectedHandles.set(genkey, i);
                 }
                 queueMicrotask(() => this.updateInfo());
             }).catch(() => { });
@@ -165,7 +182,12 @@ const data = {
                 }
                 // this.selectedHandles = handles;
                 for (const [key, value] of handles) {
-                    this.selectedHandles.set(key, value);
+                    if (this.selectedInternal_fname2id.has(value.name)) {
+                        this.removeHandle(this.selectedInternal_fname2id.get(value.name), value.name);
+                    }
+                    const genkey = ++this.selectedInternal_IK;
+                    this.selectedInternal_fname2id.set(key, genkey);
+                    this.selectedHandles.set(genkey, value);
                 }
                 queueMicrotask(() => this.updateInfo());
             } finally {
@@ -180,7 +202,12 @@ const data = {
                     const handles = new Map();
                     await this.traverseDirectory(handle, handle.name, handles);
                     for (const [key, value] of handles) {
-                        this.selectedHandles.set(key, value);
+                        if (this.selectedInternal_fname2id.has(value.name)) {
+                            this.removeHandle(this.selectedInternal_fname2id.get(value.name), value.name);
+                        }
+                        const genkey = ++this.selectedInternal_IK;
+                        this.selectedInternal_fname2id.set(key, genkey);
+                        this.selectedHandles.set(genkey, value);
                     }
                     queueMicrotask(() => this.updateInfo());
                 } finally {
@@ -223,9 +250,19 @@ const data = {
             }
         },
         updateItemName(id, newValue) {
+            // 需要先检查目标文件名是否已经存在
+            if (this.selectedInternal_fname2id.has(newValue)) {
+                ElMessage.info('目标文件名已添加，正在进行替换。');
+                // 清理资源
+                this['remove' + (this.useNewUploader ? 'Handle' : 'Item')](this.selectedInternal_fname2id.get(newValue), newValue);
+            }
             const value = this.selected.get(id);
+            // 可以释放旧的文件名
+            this.selectedInternal_fname2id.delete(value.user_id || value.name);
+            this.selectedInternal_fname2id.set(newValue, id);
             value.user_id = newValue;
             this.selected.set(id, value);
+
             queueMicrotask(() => this.updateInfo());
         },
 

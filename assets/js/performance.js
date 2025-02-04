@@ -1,6 +1,1 @@
-{let k='pg_statistics',Z=ST,a='addEventListener',d=document,b='DOMContentLoaded',f=self,z=f[k]={},T=_=>new Date-Z;
-
-d[a](b,_=>z.DCL=T());
-f[a]('load',_=>z.L=T());
-
-}
+{let Z=ST,a='addEventListener',d=document,f=self,z=f['pg_statistics']={},T=_=>new Date()-Z;d[a]('DOMContentLoaded',_=>z.DCL=T());f[a]('load',_=>z.L=T());}

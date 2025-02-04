@@ -63,7 +63,7 @@
             </div>
             <div v-if="selected.size" v-for="item in selectedInfo" class="file-item" v-deep>
                 <TextEdit v-deep :modelValue="item.name" @update:modelValue="updateItemName(item.id, $event)"></TextEdit>
-                <span><ElButton plain v-deep class="btn-delete-item" type="danger" :disabled="isLoading" @click="useNewUploader ? removeHandle(item) : removeItem(item)"><ElIcon><Delete /></ElIcon></ElButton></span>
+                <span><ElButton plain v-deep class="btn-delete-item" type="danger" :disabled="isLoading" @click="useNewUploader ? removeHandle(item.id, item.name) : removeItem(item.id, item.name)"><ElIcon><Delete /></ElIcon></ElButton></span>
             </div>
             <div v-else>Nothing</div>
         </div>
