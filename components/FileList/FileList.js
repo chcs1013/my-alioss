@@ -4,6 +4,7 @@ import { sign_url, sign_header, ISO8601 } from '@/sign.js';
 import { RefreshLeft } from 'icons-vue';
 import { defineAsyncComponent } from 'vue';
 import { uploadFile } from '../upload-core/upload.js';
+import { prettyPrintFileSize } from '@/assets/js/fileinfo.js';
 const ExplorerNavBar = defineAsyncComponent(() => import('../FileExplorer/ExplorerNavBar.js'));
 
 
@@ -38,14 +39,39 @@ const data = {
 
     computed: {
         file_list() {
+            const basePath = this.path.substring(1); // 为了符合 Linux 的文件管理习惯，我们采用以“/”开头的路径模式，在实际对接API时需处理掉
             return this.listdata.map((value, index) => {
-                return {
+                const data = {
                     name: value.Key,
-                    size: +value.Size,
+                    size: prettyPrintFileSize(+value.Size),
                     time: new Date(value.LastModified).toLocaleString(),
                     type: value.Type,
                     class: value.StorageClass,
+                    is_directory: value.Key.includes('/'),
                 }
+                if (data.is_directory) {
+                    /* TODO:
+                    value.Key 是 文件在OSS中的完整路径，例如 data/user/0/path/to/file.txt
+                    basePath 是用户的“当前路径”，类似于`pwd`，也可以是一个“prefix”
+                    例如，文件 data/1.txt 可以被以下 basePath 匹配：
+                    da
+                    dat
+                    data/
+                    但不能被以下 basePath 匹配：
+                    dat/
+                    我们的要求是：
+                    我们只显示“当前目录”下的**直属**文件。例如，
+                    当前目录：data/
+                    文件有：[data/1.txt, data/2.txt, data/user1/3.txt, data/sub/path/to/file4.txt]
+                    显示内容：
+                    【文件夹】user1
+                    【文件夹】sub
+                    【文件】1.txt
+                    【文件】2.txt
+                    可能需要修改相关数据结构，例如可能需要更改`map`的使用。
+                    */
+                }
+                return data
             });
         },
     },
