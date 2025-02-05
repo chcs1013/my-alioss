@@ -69,7 +69,7 @@ const data = {
                 this.listdata.length = 0;
                 this.bucket_name = '';
                 this.active_panel = 'file';
-                this.$refs.lst?.update();
+                this.path = '/';
                 return;
             }
             try {
@@ -113,8 +113,6 @@ const data = {
                         this.loadingInstance = null;
                     }
                     this.m__updateLock = false;
-                    // console.log('closed loading service in FileExplorer');
-                    this.$refs.lst?.update();
                 });
             }
             if (err) throw err;
@@ -416,25 +414,6 @@ const data = {
     },
 
     mounted() {
-        // this.$nextTick(() => {
-        //     LoadCSS(`
-        //     .icon {
-        //         display: inline-block;
-        //         width: 1em;
-        //         height: 1em;
-        //         background-position: center;
-        //         background-repeat: no-repeat;
-        //         background-size: 1em;
-        //         margin-right: 5px;
-        //     }
-        //     .icon.is-file {
-        //         background-image: url(assets/img/shell/file.png);
-        //     }
-        //     .icon.is-folder {
-        //         background-image: url(assets/img/shell/folder.png);
-        //     }
-        //     `, this.$refs.lst.shadowRoot);
-        // });
         this.$nextTick(() => {
             const user_endpoint2name = localStorage.getItem('Project:MyAliOSS;Type:User;Key:user_endpoint2name');
             if (user_endpoint2name) try {

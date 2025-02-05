@@ -1,6 +1,6 @@
 <div v-deep v-bind="$attrs" ref="my">
     <div class="top-view" v-deep>
-        <div v-deep class="flexible-feature main-feature" @keydown.esc="downloadFolderDialogShows = false">
+        <div v-deep class="flexible-feature main-feature" @keydown.esc="downloadFolderDialogShows = filterDialogShows = false">
             <ElPopover :visible="downloadFolderDialogShows" placement="bottom" title="下载的内容中含有文件夹" width="220" @before-leave="$refs.dl.$el.focus()">
                 <template #reference><ElButton size="small" @click="operate('dl')" ref="dl">下载/获取链接</ElButton></template>
                 <div><a href="javascript:" @click.prevent="getContentLinkOnly">仅获取链接(逐个下载)</a></div>

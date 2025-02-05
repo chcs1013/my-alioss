@@ -57,7 +57,7 @@ const data = {
             if (typeof this.userFilter !== 'string') return this.listdata;
             const uf = this.userFilter.toLowerCase();
             return this.userFilter ? this.listdata.filter(v =>
-                ((v.Key && v.Key.match(/([^\/]+)$/)[1]) || (v.Prefix && v.Prefix.match(/([^\/]+)\/$/)[1]) || '').toLowerCase().includes(uf)) : this.listdata;
+                ((v.Key && (!v.Key.endsWith('/')) && v.Key.match(/([^\/]+)$/)[1]) || (v.Prefix && v.Prefix.match(/([^\/]+)\/$/)[1]) || '').toLowerCase().includes(uf)) : this.listdata;
         },
         file_list() {
             if (this.showAll) return this.filteredListData.map((value, index) => {
