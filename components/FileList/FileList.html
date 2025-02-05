@@ -1,11 +1,26 @@
 <div v-deep v-bind="$attrs" ref="my">
     <div class="top-view" v-deep>
-        <div v-deep>
-            <ElButton size="small" @click="operate('dl')">下载/获取链接</ElButton>
+        <div v-deep class="flexible-feature main-feature" @keydown.esc="downloadFolderDialogShows = false">
+            <ElPopover :visible="downloadFolderDialogShows" placement="bottom" title="下载的内容中含有文件夹" width="220" @before-leave="$refs.dl.$el.focus()">
+                <template #reference><ElButton size="small" @click="operate('dl')" ref="dl">下载/获取链接</ElButton></template>
+                <div><a href="javascript:" @click.prevent="getContentLinkOnly">仅获取链接(逐个下载)</a></div>
+                <div v-if="fsapiNotSupported">您的浏览器不支持文件夹下载。<a href="#" @click.prevent="downloadFolderDialogShows = false">取消</a></div>
+                <template v-else>
+                    <div><a href="#" @click.prevent="getSaveToDir">保存到文件夹</a></div>
+                </template>
+                <Teleport to="body" :disabled="!downloadFolderDialogShows"><div v-deep class="cover" @click="downloadFolderDialogShows = false"></div></Teleport>            
+            </ElPopover>
             <ElButton size="small" @click="operate('meta')">元数据</ElButton>
-            <ElButton size="small"><ElTooltip effect=dark content="此功能已弃用，不再继续维护。"><ElCheckbox size="small" v-model="showAll">显示所有文件</ElCheckbox></ElTooltip></ElButton>
+            <ElButton size="small" @click="operate('preview')">预览</ElButton>
+            <ElButton size="small" v-if="0"><ElTooltip effect=dark content="此功能已弃用，不再继续维护。"><ElCheckbox size="small" v-model="showAll">显示所有文件</ElCheckbox></ElTooltip></ElButton>
+            <ElPopover :visible="filterDialogShows" placement="bottom" title="筛选文件" width="300" @before-leave="$refs.filter_btn.$el.focus()">
+                <template #reference><ElButton size="small" @click="operate('filter')" ref="filter_btn">筛选{{userFilter?'已启用':""}}</ElButton></template>
+                <div style="display: flex; flex-direction: column;"><ElInput v-model="userFilter" placeholder="设置筛选器..." clearable /></div>
+                <div style="margin-top: 0.5em;" v-if="userFilter"><a href="javascript:" @click.prevent="() => ((userFilter = ''), (filterDialogShows = false))">清除筛选</a></div>
+                <Teleport to="body" :disabled="!filterDialogShows"><div v-deep class="cover" @click="filterDialogShows = false"></div></Teleport>            
+            </ElPopover>
         </div>
-        <div v-deep style="margin-top: 0.5em;" v-if="!showAll">
+        <div v-deep class="flexible-feature main-feature" style="margin-top: 0.5em;" v-if="!showAll">
             <ElButton size="small" @click="operate('newdir')">新建文件夹</ElButton>
             <ElButton size="small" type="danger" plain @click="operate('delete')">删除</ElButton>
             <ElButton size="small" @click="$emit('goPath')">
@@ -14,12 +29,23 @@
                 </ElIcon>
             </ElButton>
         </div>
+        <ElSelect v-deep v-model="currentCommand" class="flexible-feature alternative-feature" @change="() => (operate(currentCommand), (currentCommand = '选择操作...'))">
+            <ElOption value="选择操作...">选择操作</ElOption>
+            <ElOption value="seperator.1" disabled>------------</ElOption>
+            <ElOption value="dl">下载/获取链接</ElOption>
+            <ElOption value="meta">元数据</ElOption>
+            <ElOption value="preview">预览</ElOption>
+            <ElOption value="filter">筛选{{userFilter?'已启用':""}}</ElOption>
+            <ElOption value="newdir">新建文件夹</ElOption>
+            <ElOption value="delete">删除选中项</ElOption>
+            <ElOption value="refresh">刷新</ElOption>
+        </ElSelect>
     </div>
     <ExplorerNavBar :path="path" @openPath="goPath" />
     <div class="bottom-view" v-deep style="display: flex; flex-direction: column; overflow: hidden; flex: 1;">
         <ElTable :data="file_list" border style="width:100%;flex:1;margin-bottom:10px"  ref="table"
             :default-sort="{ prop: 'name' }"
-            @row-click="toggleRowSelection"
+            @row-click="$refs.table.toggleRowSelection($event)"
         >
             <ElTableColumn type="selection" width="40" />
             <ElTableColumn show-overflow-tooltip sortable prop="name" label="文件名" width="400">
@@ -40,24 +66,7 @@
                 <span>没有文件</span>
             </template>
         </ElTable>
-
-        <ElPagination small
-            layout="total, prev, pager, next, jumper"
-            v-model:current-page="currentPage"
-            :total="total_files"
-            :page-size="pageSize"
-            @current-change="onCurrentChange"
-            style="place-content:center" />
     </div>
-
-    <dialog ref="downloadFolderDialog" @cancel.prevent>
-        <h1 style="margin-top: 0; text-align: center;">下载文件夹</h1>
-        <div style="margin-bottom: 0.5em;"><a href="javascript:" @click.prevent="getContentLinkOnly">仅获取链接(逐个下载)</a></div>
-        <div v-if="fsapiNotSupported">您的浏览器不支持文件夹下载。<a href="#" @click.prevent="$refs.downloadFolderDialog.close()">取消</a></div>
-        <template v-else>
-            <div><a href="#" @click.prevent="getSaveToDir">保存到文件夹</a></div>
-        </template>
-    </dialog>
 
 <style v-deep>
 style>>> {
@@ -83,6 +92,28 @@ style>>> {
 }
 .is-item.item-type-file>>>::before {
     background-image: url(./assets/img/shell/file.png);
+}
+.cover>>> {
+    opacity: 0;
+    transition: all 0.2s;
+}
+body > .cover>>> {
+    position: fixed;
+    inset: 0;
+    z-index: 2;
+    background-color: #ffffff;
+    opacity: 0.5;
+}
+.flexible-feature.alternative-feature>>> {
+    display: none !important;
+}
+@media screen and (max-width: 500px) {
+    .flexible-feature.main-feature>>> {
+        display: none !important;
+    }
+    .flexible-feature.alternative-feature>>> {
+        display: revert !important;
+    }
 }
 </style>
 </div>

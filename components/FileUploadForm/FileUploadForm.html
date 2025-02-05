@@ -81,7 +81,7 @@
         </ElFormItem>
     </ElForm>
     <template v-if="isLoading || isDone">
-        <p v-if="isLoading">正在处理...</p>
+        <p v-if="!isDone">正在处理...</p>
         <p v-else>上传已完成。</p>
 
         <ElCard v-deep style="margin-top: 0.5em;">
@@ -99,11 +99,11 @@
                 <template #label>{{ '当前状态' }}</template>
                 <span>{{progress.status}}</span>
             </ElDescriptionsItem>
-            <ElDescriptionsItem>
+            <ElDescriptionsItem v-if="!isDone">
                 <template #label>{{ '已上传' }}</template>
                 <span>{{progress.current_bytes}}</span>
             </ElDescriptionsItem>
-            <ElDescriptionsItem>
+            <ElDescriptionsItem v-if="!isDone">
                 <template #label>{{ '总大小' }}</template>
                 <span>{{progress.total_bytes}}</span>
             </ElDescriptionsItem>
@@ -116,7 +116,6 @@
         <div v-if="isDone" v-deep style="margin-top: 1em; font-size: large;">
             <span style="font-family: initial;">上传已完成, 共 {{ progress.done_total }}, {{ progress.done_success }} 成功, {{ progress.done_failure }} 失败, 用时 {{progress.timeCost / 1e3}} 秒。</span>
         </div>
-        <div v-if="isDone"><span>* 需要点击下面的&nbsp;</span><ElButton disabled>完成</ElButton><span>&nbsp;按钮，新文件才能在文件列表中显示！</span></div>
 
         <div v-if="isDone" style="margin-top: 1em;" v-deep>
             <ElButton type="primary" plain @click="confirmCancel">完成</ElButton>

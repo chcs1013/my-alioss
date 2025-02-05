@@ -19,6 +19,10 @@ const data = {
             total_files: 0,
             loadingInstance: null,
             showAll: false,
+            downloadFolderDialogShows: false,
+            currentCommand: '选择操作...',
+            userFilter: '',
+            filterDialogShows: false,
         }
     },
 
@@ -39,19 +43,31 @@ const data = {
         ExplorerNavBar,
     },
 
+    watch: {
+        path() {
+            this.userFilter = '';  
+        },
+    },
+
     computed: {
         fsapiNotSupported() {
             return !(window.showOpenFilePicker && window.showDirectoryPicker)
         },
+        filteredListData() {
+            if (typeof this.userFilter !== 'string') return this.listdata;
+            const uf = this.userFilter.toLowerCase();
+            return this.userFilter ? this.listdata.filter(v =>
+                ((v.Key && v.Key.match(/([^\/]+)$/)[1]) || (v.Prefix && v.Prefix.match(/([^\/]+)\/$/)[1]) || '').toLowerCase().includes(uf)) : this.listdata;
+        },
         file_list() {
-            if (this.showAll) return this.listdata.map((value, index) => {
+            if (this.showAll) return this.filteredListData.map((value, index) => {
                 const data = {
                     name: value.Key, size: (+value.Size), time: new Date(value.LastModified).toLocaleString(), type: value.Type, class: value.StorageClass, fullKey: value.Key,
                 } 
                 return data
             });
             
-            return this.listdata.map((value, index) => {
+            return this.filteredListData.map((value, index) => {
                 if (value.Prefix) return {
                     name: (value.Prefix).match(/([^\/]+)\/$/)[1], fullKey: value.Prefix,
                     size: '-', time: '',
@@ -68,100 +84,12 @@ const data = {
                 if (a.dir === b.dir) return a.name.localeCompare(b.name);
                 return a.dir ? -1 : 1;
             });
-
-            const basePath = this.path === '/' ? '' : this.path.substring(1); // 处理根目录
-            const currentDepth = basePath.split('/').filter(p => p).length; // 当前路径层级
-
-            // 用于收集所有可能的文件/文件夹
-            const items = new Map(); // 用Map实现自动去重和快速查找
-
-            this.listdata.forEach(item => {
-                // 只处理属于当前路径下的对象
-                if (!item.Key.startsWith(basePath)) return;
-
-                // 获取相对路径（去掉basePath前缀）
-                const relPath = item.Key.slice(basePath.length);
-
-                // 分割路径层级（过滤空段）
-                const segments = relPath.split('/').filter(p => p !== '');
-
-                // 排除当前路径自身（当basePath是完整路径时）
-                if (relPath === '' && item.Size === 0) return;
-
-                // CASE 1: 显式目录（以/结尾的0字节对象）
-                if (item.Key.endsWith('/') && item.Size === 0) {
-                    const dirName = segments[0] + '/';
-                    if (!items.has(dirName)) {
-                        items.set(dirName, {
-                            name: segments[0],
-                            isExplicit: true,
-                            type: item.Type,
-                            class: '',
-                            dir: true,
-                            size: '',
-                            time: new Date(item.LastModified).toLocaleString(),
-                            fullKey: item.Key
-                        });
-                    }
-                    return;
-                }
-
-                // CASE 2: 处理隐式目录和文件
-                if (segments.length === 0) return; // 排除空路径
-
-                // 当前路径下的直属文件
-                if (segments.length === 1 && !item.Key.endsWith('/')) {
-                    const fileName = segments[0];
-                    if (!items.has(fileName)) {
-                        items.set(fileName, {
-                            name: fileName,
-                            type: item.Type,
-                            class: item.StorageClass,
-                            dir: false,
-                            size: (+item.Size),
-                            time: new Date(item.LastModified).toLocaleString(),
-                            fullKey: item.Key
-                        });
-                    }
-                    return;
-                }
-
-                // 处理隐式目录（根据深层对象推断出的目录）
-                const firstSegment = segments[0];
-                const implicitDirKey = `${basePath}${firstSegment}/`;
-                const dirName = `${firstSegment}/`;
-
-                if (!items.has(dirName)) {
-                    items.set(dirName, {
-                        name: firstSegment,
-                        isExplicit: false,
-                        type: item.Type,
-                        class: '',
-                        dir: true,
-                        size: '',
-                        time: this.findImplicitDirTime(implicitDirKey), // 需要实现时间推断方法
-                        fullKey: implicitDirKey
-                    });
-                }
-            });
-
-            // 转换为数组并排序（目录在前，文件在后）
-            return Array.from(items.values()).sort((a, b) => {
-                if (a.dir === b.dir) return a.name.localeCompare(b.name);
-                return a.dir ? -1 : 1;
-            });
         }
     },
 
     methods: {
         async dynupdate(name, operation = 'ADD|DELETE', data = {}) {
             if (operation === 'DELETE') {
-                // if (name instanceof Set) {
-                //     this.$emit('update:listdata', this.listdata.filter(value => !name.has(value.Key)));
-                //     return;
-                // }
-                // this.$emit('update:listdata', this.listdata.filter(value => value.Key !== name));
-                // return;
                 this.$emit('goPath');
             }
             if (operation === 'ADD') {
@@ -273,7 +201,7 @@ const data = {
                         if (i.dir) { hasDir = true; break }
                         else selection.push(i.fullKey);
                     if (hasDir) {
-                        return this.$refs.downloadFolderDialog.showModal();
+                        return this.downloadFolderDialogShows = true;
                     }
                     this.$emit('download', selection);
                     break;
@@ -305,6 +233,41 @@ const data = {
                     CreateDynamicResizableView(div, '文件元数据: ' + selection[0].name, 720, 300);
                     break;
                 }
+                    
+                case 'preview': {
+                    const selection = this.$refs.table.getSelectionRows();
+                    if (selection.length != 1) return ElMessage.error('此操作只能选择一个文件');
+                    if (selection[0].dir) return ElMessage.error('此操作只能应用于文件');
+                    const url = new URL((encodeURIComponent(selection[0].fullKey).replace(/\%2F/ig, '/')), this.oss_name);
+                    const sign_params = { access_key_id: this.username, access_key_secret: this.usersecret, expires: 3600, bucket: this.bucket, region: this.region };
+                    const signed_url = await sign_url(url, sign_params);
+                    const head = await fetch(await sign_url(url, { method: 'HEAD', ...sign_params }), { method: 'HEAD' });
+                    const previewLink = new URL('./preview.html', location.href);
+                    const meta = new URL('/', previewLink);
+                    const ctype = head.headers.get('content-type').split('/');
+                    meta.searchParams.set('type', ctype[0]);
+                    meta.searchParams.set('ctype', ctype.join('/'));
+                    meta.searchParams.set('url', btoa(signed_url));
+                    previewLink.hash = '#/' + meta.search;
+                    const frame = document.createElement('iframe');
+                    if ('allow' in HTMLIFrameElement.prototype) frame.allow = 'autoplay *; fullscreen *';
+                    else frame.allowFullscreen = true; // for compiability
+                    // to preview PDFs, sandbox is not allowed to be set
+                    // frame.sandbox = 'allow-forms allow-scripts allow-modals allow-downloads allow-orientation-lock';
+                    frame.src = previewLink.href;
+                    frame.setAttribute('style', 'width: 100%; height: 100%; overflow: hidden; border: 0; box-sizing: border-box; display: flex; flex-direction: column;');
+                    const el = CreateDynamicResizableView(frame, '预览: ' + selection[0].name, 1280, 720);
+                    el.setAttribute('style', '--padding: 0;' + (el.getAttribute('style') || ''));
+                    break;
+                }
+                    
+                case 'refresh':
+                    this.$emit('goPath');
+                    break;
+                
+                case 'filter':
+                    this.filterDialogShows = true;
+                    break;
 
                 default:
                     break;
@@ -315,48 +278,11 @@ const data = {
             if ($event.startsWith('//')) $event = $event.substring(1);
             this.$emit('goPath', $event);
         },
-        toggleRowSelection(row) {
-            this.$refs.table.toggleRowSelection(row);
-        },
-        onCurrentChange() {
-            
-        },
-        // 查找隐式目录的最近修改时间（取目录下最新文件的修改时间）
-        findImplicitDirTime(dirPrefix) {
-            throw new Error('deprecated')
-            return this.listdata
-                .filter(item => item.Key.startsWith(dirPrefix) && !item.Key.endsWith('/'))
-                .reduce((latest, item) => {
-                    const mtime = new Date(item.LastModified);
-                    return mtime > latest ? mtime : latest;
-                }, new Date(0))
-                .toLocaleString();
-        },
-        // 新增方法：获取指定文件夹下的所有文件（包含嵌套文件）
-        getFolderContents(folderKey) {
-            throw new Error('deprecated')
-            // 确保文件夹路径以斜杠结尾
-            const normalizedKey = folderKey.endsWith('/') ? folderKey : `${folderKey}/`
-
-            return this.listdata.filter(item => {
-                // 匹配当前文件夹下的所有对象（包含子目录）
-                const isInFolder = item.Key.startsWith(normalizedKey)
-
-                // 排除文件夹标记对象（显式目录）
-                const isFolderMarker = item.Key.endsWith('/') && item.Size === 0
-
-                // // 排除其他目录的文件夹标记
-                // const isSubFolderMarker = item.Key.slice(normalizedKey.length).includes('/')
-
-                return isInFolder && !isFolderMarker// && !isSubFolderMarker
-            }).map(value => ({ name: value.Key }));
-        },
         async getContentLinkOnly() {
-            this.$refs.downloadFolderDialog.close();
+            this.downloadFolderDialogShows = false;
             ElMessage.success('正在处理您的请求。这可能需要一些时间。');
             const selection_raw = this.$refs.table.getSelectionRows();
             const selection = new Array();
-            const path = this.path;
             const { exportContent } = await import('../App/filelistapi.js');
             for (const i of selection_raw)
                 if (i.dir) {

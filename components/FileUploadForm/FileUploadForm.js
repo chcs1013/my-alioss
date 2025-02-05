@@ -7,6 +7,8 @@ import { defineAsyncComponent } from 'vue';
 // const TextEdit = defineAsyncComponent(() => import('../TextEdit/TextEdit.js'));
 import TextEdit from '../TextEdit/TextEdit.js';
 
+const announcement_class = fetch(import.meta.url + '/../announcement.json').then(v => v.json());
+
 const componentId = 'd529d06e-d70d-4d9a-8eb6-19ad0300e01e';
 
 const data = {
@@ -58,7 +60,6 @@ const data = {
 
     methods: {
         confirmCancel() {
-            this.$emit('goPath'); // 刷新列表
             this.$nextTick(() => this.$nextTick(() => {
                 this.$emit('update:active_panel', 'file');
                 this.$emit('update:is_loading', false);
@@ -175,6 +176,7 @@ const data = {
 
                 for (const i of proms) {
                     const handle = await i;
+                    if (!handle) continue;
                     if (handle.kind === 'directory') {
                         // Scan all files in the directory, then wrap it in a new object
                         await this.traverseDirectory(handle, handle.name, handles);
@@ -303,6 +305,7 @@ const data = {
                 this.progress.done_success = result.success;
                 this.progress.done_failure = result.failure;
                 this.progress.timeCost = new Date().getTime() - this.progress.timeStart;
+                this.$emit('goPath'); // 刷新列表
             }
             catch (error) {
                 console.error('[upload]', 'unexpected:', error);
@@ -334,7 +337,7 @@ const data = {
     mounted() {
         this.$nextTick(() => this.uploadForm.remotePath = this.path);
         this.$nextTick(() => ((this.fsapiNotSupported) && (this.useNewUploader = false)));
-        fetch(import.meta.url + '/../announcement.json').then(v => v.json()).then(v => {
+        announcement_class.then(v => {
             this.annvalue = v;
             if (localStorage.getItem('Project:MyAliOSS;Type:User;Key:Announcement/Upload') !== v.id)
                 this.closedAnnouncement = false;

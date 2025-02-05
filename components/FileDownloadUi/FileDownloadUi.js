@@ -78,9 +78,9 @@ const data = {
                             method: 'HEAD',
                             ...common_params
                         });
-                        const ctype =  (await fetch(req, { method: 'HEAD' })).headers.get('content-type').split('/');
+                        const ctype = (await fetch(req, { method: 'HEAD' })).headers.get('content-type').split('/');
                         meta.searchParams.set('type', ctype[0]);
-                        meta.searchParams.set('ctype', ctype);
+                        meta.searchParams.set('ctype', ctype.join('/'));
                         meta.searchParams.set('url', btoa(signed_url));
                         previewLink.hash = '#/' + meta.search;
                         i.link = previewLink.href;

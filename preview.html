@@ -9,13 +9,14 @@
 </head>
 <body>
     <div id="ct">...</div>
-    <script>const l=location.href;const u=new URL(new URL(l).hash.substring(1),l);const r=atob(u.searchParams.get('url')),t=u.searchParams.get('type');const n=_=>0;switch(t){
-case'text':fetch(r).then(v=>v.text()).then(t=>{let p=document.createElement('pre');p.id='ct';ct.replaceWith(p);p.innerText=t}).catch(e=>ct.innerText=e);break;
-case'image':{let p=document.createElement('img');p.id='ct';ct.replaceWith(p);p.src=r;p.onclick=_=>p.classList.toggle('d')};break;
-case'audio':{let p=document.createElement('audio');p.id='ct';ct.replaceWith(p);p.controls=!0;p.src=r;p.play().catch(n)};break;
-case'video':{let p=document.createElement('video');p.id='ct';ct.replaceWith(p);p.controls=!0;p.src=r;p.playsInline=!0;p.play().catch(n)};break;
-default:{let p=document.createElement('a');p.id='ct';ct.replaceWith(p);p.href=r;p.innerText='Cannot preview, click to download'}}document.title=r</script>
+    <script>const l=location.href,u=new URL(new URL(l).hash.substring(1),l),x=u.searchParams;const r=atob(x.get('url')),t=x.get('type'),cp=x.get('ctype');const n=_=>0;switch(t){
+case'text':fetch(r).then(v=>v.text()).then(t=>{let p=document.createElement('pre');p.id='ct';ct.replaceWith(p);p.innerText=t}).catch(e=>ct.innerText=e);break
+case'image':{let p=document.createElement('img');p.id='ct';ct.replaceWith(p);p.src=r;p.onclick=_=>p.classList.toggle('d')}break
+case'audio':{let p=document.createElement('audio');p.id='ct';ct.replaceWith(p);p.controls=!0;p.src=r;p.play().catch(n)}break
+case'video':{let p=document.createElement('video');p.id='ct';ct.replaceWith(p);p.controls=!0;p.src=r;p.playsInline=!0;p.play().catch(n)}break
+default:switch(cp){case'application/pdf':fetch(r).then(v=>v.blob()).then(v=>{let p=document.createElement('object');p.id='ct';ct.replaceWith(p);p.data=URL.createObjectURL(v);p.type=cp});break
+default:{let p=document.createElement('a');p.id='ct';ct.replaceWith(p);p.href=r;p.innerText='Cannot preview, click to download'}}}document.title=r</script>
     <style>body:not(:has(pre)){user-select:none}body:has(video),body:has(audio),body:has(img){background-color: #000;}</style>
-    <style>img#ct{cursor:zoom-in}img#ct.d{max-width:unset;max-height:unset;position:absolute;left:0;top:0;cursor:zoom-out}</style>
+    <style>img#ct{cursor:zoom-in}img#ct.d{max-width:unset;max-height:unset;position:absolute;left:0;top:0;cursor:zoom-out}video#ct,object#ct{width:100%;height:100%}</style>
 </body>
 </html>

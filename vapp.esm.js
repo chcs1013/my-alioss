@@ -125,7 +125,9 @@ queueMicrotask(() => {
         caption.append(close_button);
 
         el.append(caption, element);
-        el.open = true;  
+        el.open = true;
+
+        return el;
     };
     globalThis.document.addEventListener('click', ev => {
         const target = ev.target;
