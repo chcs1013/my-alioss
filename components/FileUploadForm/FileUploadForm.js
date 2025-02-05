@@ -66,10 +66,10 @@ const data = {
         },
 
         addFileFromInput() {
-            if (this.selectedInternal_fname2id.has(i.name)) {
-                this.removeApi(this.selectedInternal_fname2id.get(i.name), i.name);
-            }
             for (const i of this.$refs.localFile.files) {
+                if (this.selectedInternal_fname2id.has(i.name)) {
+                    this.removeApi(this.selectedInternal_fname2id.get(i.name), i.name);
+                }
                 const genkey = ++this.selectedInternal_IK;
                 this.selectedInternal_fname2id.set(i.name, genkey);
                 this.selectedFiles.set(genkey, i);
