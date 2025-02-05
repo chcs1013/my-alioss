@@ -233,7 +233,7 @@ const data = {
             ev.preventDefault();
 
             let dropEffect = "none";
-            if (0 && checkResult.dropEffect) dropEffect = checkResult.dropEffect;
+            if (checkResult.dropEffect) dropEffect = checkResult.dropEffect;
             else if (ev.shiftKey) dropEffect = "move";
             else if (ev.ctrlKey) dropEffect = "copy";
             else if (ev.altKey) dropEffect = "link";
