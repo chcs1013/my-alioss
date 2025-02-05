@@ -1,10 +1,9 @@
 import { getHTML } from '@/assets/js/browser_side-compiler.js';
 import { ElMessage, ElMessageBox, ElLoading } from 'element-plus';
-import { addCSS as LoadCSS } from '@/modules/util/BindMove.js';
 import { xml2json } from '../xml2json/xml2json.js';
 import { RefreshLeft, Fold } from 'icons-vue';
 import { defineAsyncComponent } from 'vue';
-import { sign_url, sign_header, ISO8601 } from '@/sign.js';
+
 
 
 const FileList = defineAsyncComponent(() => import('../FileList/FileList.js'));
@@ -37,7 +36,7 @@ const data = {
             // buckets: [],
             listdata: [],
             loadingInstance: null,
-            path: '/', path_previous_update: '',
+            path: '/',
             bucket_name_loader_PromiseObject: { a: null, b: null, c: null, d: null, e: 0, f: '' },
             active_panel: 'file',
             loadCopyRightFrame: false,
@@ -102,57 +101,8 @@ const data = {
             try {
                 if(!this.usersecret) throw '未登录状态下无法列举 Bucket，只能通过路径访问或上传文件。';
                 // list bucket
-                let token = null;
-                while (1) {
-                    const url = new URL('/?list-type=2&max-keys=1000', this.oss_name);
-                    url.searchParams.append('delimiter', '/');
-                    if (this.path.length > 1) url.searchParams.append('prefix', this.path.substring(1));
-                    if (!this.bucket_name) {
-                        ({ bucket: this.bucket_name, region: this.region_name } = await this.getBucketName(this.oss_name));
-                    }
-                    if (token) url.searchParams.append('continuation-token', token);
-                    const date = new Date();
-                    const myHead = {
-                        'x-oss-content-sha256': 'UNSIGNED-PAYLOAD',
-                        'x-oss-date': ISO8601(date),
-                    };
-                    const resp = await fetch(url, {
-                        method: 'GET',
-                        headers: {
-                            Authorization: await sign_header(url, {
-                                access_key_id: this.username,
-                                access_key_secret: this.usersecret,
-                                date,
-                                expires: 60,
-                                bucket: this.bucket_name,
-                                region: this.region_name,
-                                additionalHeadersList: myHead
-                            }),
-                            ...myHead
-                        }
-                    });
-                    const json = xml2json(await resp.text());
-
-                    if (!token) {
-                        this.listdata.length = 0;
-                    }
-                    if (+json.KeyCount) {
-                        if ('object' === typeof json.Contents) this.listdata.push(json.Contents);
-                        else this.listdata.push.apply(this.listdata, json.Contents);
-                        if ('object' === typeof json.CommonPrefixes) this.listdata.push(json.CommonPrefixes);
-                        else this.listdata.push.apply(this.listdata, json.CommonPrefixes);
-                    } 
-
-                    if (json.EC) {
-                        throw json.Code + ': ' + json.Message;
-                    }
-
-                    if (json.NextContinuationToken) {
-                        token = json.NextContinuationToken;
-                        continue;
-                    }
-                    break;
-                }
+                const { exportContent } = await import('./filelistapi.js');
+                await exportContent(this.path, this.listdata, this);
             }
             catch (e) { err = e; }
             finally {
@@ -190,21 +140,6 @@ const data = {
             this.logon_data.access_key_secret = '';
             ElMessage.success('登录完成');
         },
-        // async getBuckets() {
-        //     try {
-        //         const resp = await makeApiRequest_Direct('/', this.default_endpoint, this.username, this.usersecret)
-        //         if (!resp) {
-        //             throw '请检查 Access Key 是否有效。';
-        //         }
-        //         console.log(resp);
-        //         if (resp.ListAllMyBucketsResult.Buckets.Bucket.length) {
-        //             return resp.ListAllMyBucketsResult.Buckets.Bucket;
-        //         }
-        //     }
-        //     catch (e) {
-        //         ElMessageBox.alert('无法获取 Bucket 列表。' + e, '错误', { type: 'error' });
-        //     }
-        // },
         clearLogonInfo() {
             localStorage.removeItem('Project:MyAliOSS;Type:User;Key:AccessKey');
             localStorage.removeItem('Project:MyAliOSS;Type:User;Key:Endpoint');
@@ -218,7 +153,6 @@ const data = {
             ElMessage.success('已清除');
         },
         goPath(neewPath) {
-            const previous_update = this.path_previous_update || this.path;
             if (neewPath) this.path = neewPath;
             if (!this.path.startsWith('/')) {
                 this.path = '/' + this.path;
@@ -226,17 +160,6 @@ const data = {
             else if (this.path.startsWith('//')) {
                 this.path = this.path.substring(1);
             }
-            // 只有在刷新时，才从服务器重新拉数据
-            if (neewPath) {
-                // 检测newPath是否是previous_update的子目录
-                // 如果是，则为
-                // 跳转行为，不重新拉数据
-                // 否则，说明跳转到父级文件夹，应重新拉取数据
-                //TODO:
-                const isSubdirectory = neewPath.startsWith(previous_update);
-                if (isSubdirectory) return;
-            }
-            this.path_previous_update = this.path;
             this.isLoading = true;
             this.update()
                 .catch(e => ElMessageBox.alert('无法连接到 OSS。\n' + e, '错误', { type: 'error', confirmButtonText: '好' }))
@@ -583,6 +506,11 @@ const data = {
                 this.appVersion = '0.0.0.0';
             }
         }).catch(() => this.appVersion = '0.0.0.0');
+
+        import('@/sign.js').then(v => {
+            globalThis.appInstance_.signingkit = {};
+            for (const i in v) globalThis.appInstance_.signingkit[i] = v[i];
+        });
 
         this.appLoadTime = pg_statistics.ASL = new Date() - ST;//App Script Loaded
     },

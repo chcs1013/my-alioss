@@ -69,21 +69,6 @@ function getCanonicalHeaders(date, host, additionalHeadersList = {}) {
         headers_additional: headers_additional.join(';'),
     };
 }
-function getCanonicalQueryString(url = new URL()) {
-    // 获取 URL 的 searchParams
-    const searchParams = url.searchParams;
-    // 将 searchParams 转换为数组并按键排序
-    const sortedParams = Array.from(searchParams.entries()).sort();
-    // 将排序后的键值对重新组合为查询字符串
-    const canonicalQueryString = sortedParams
-        .map(([key, value]) => `${encodeURIComponent(key)}${value?'=':''}${encodeURIComponent(value)}`)
-        .join('&');
-    return canonicalQueryString;
-}
-// 定义 HMAC-SHA256 辅助函数
-function hmacsha256(key, message) {
-    return CryptoJS.HmacSHA256(message, key);
-}
 const PathNameStandard = {
     '!': '%21',
     "'": '%27',
@@ -94,6 +79,21 @@ const PathNameStandard = {
 function makePathNameStandard(pathname) {
     return pathname
         .replace(/[\!\'\"\(\)]/g, substring => PathNameStandard[substring]);
+}
+function getCanonicalQueryString(url = new URL()) {
+    // 获取 URL 的 searchParams
+    const searchParams = url.searchParams;
+    // 将 searchParams 转换为数组并按键排序
+    const sortedParams = Array.from(searchParams.entries()).sort();
+    // 将排序后的键值对重新组合为查询字符串
+    const canonicalQueryString = sortedParams
+        .map(([key, value]) => `${makePathNameStandard(encodeURIComponent(key))}${value?'=':''}${makePathNameStandard(encodeURIComponent(value))}`)
+        .join('&');
+    return canonicalQueryString;
+}
+// 定义 HMAC-SHA256 辅助函数
+function hmacsha256(key, message) {
+    return CryptoJS.HmacSHA256(message, key);
 }
 // https://help.aliyun.com/zh/oss/developer-reference/add-signatures-to-urls
 export async function sign_url(user_url, {

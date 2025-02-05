@@ -5,6 +5,7 @@ import { RefreshLeft } from 'icons-vue';
 import { defineAsyncComponent } from 'vue';
 import { uploadFile } from '../upload-core/upload.js';
 import { prettyPrintFileSize } from '@/assets/js/fileinfo.js';
+import { xml2json } from '../xml2json/xml2json.js';
 const ExplorerNavBar = defineAsyncComponent(() => import('../FileExplorer/ExplorerNavBar.js'));
 
 
@@ -39,18 +40,35 @@ const data = {
     },
 
     computed: {
+        fsapiNotSupported() {
+            return !(window.showOpenFilePicker && window.showDirectoryPicker)
+        },
         file_list() {
             if (this.showAll) return this.listdata.map((value, index) => {
                 const data = {
-                    name: value.Key,
-                    size: (+value.Size),
-                    time: new Date(value.LastModified).toLocaleString(),
-                    type: value.Type,
-                    class: value.StorageClass,
-                    fullKey: value.Key,
+                    name: value.Key, size: (+value.Size), time: new Date(value.LastModified).toLocaleString(), type: value.Type, class: value.StorageClass, fullKey: value.Key,
                 } 
                 return data
             });
+            
+            return this.listdata.map((value, index) => {
+                if (value.Prefix) return {
+                    name: (value.Prefix).match(/([^\/]+)\/$/)[1], fullKey: value.Prefix,
+                    size: '-', time: '',
+                    type: '文件夹', class: '', dir: true
+                };
+                if (value.Key.endsWith('/')) return;
+                return {
+                    name: (value.Key).match(/([^\/]+)$/)[1], size: (+value.Size),
+                    time: new Date(value.LastModified).toLocaleString(),
+                    type: value.Type, class: value.StorageClass,
+                    fullKey: value.Key, dir: false
+                }
+            }).filter(v => !!v).sort((a, b) => {
+                if (a.dir === b.dir) return a.name.localeCompare(b.name);
+                return a.dir ? -1 : 1;
+            });
+
             const basePath = this.path === '/' ? '' : this.path.substring(1); // 处理根目录
             const currentDepth = basePath.split('/').filter(p => p).length; // 当前路径层级
 
@@ -138,12 +156,13 @@ const data = {
     methods: {
         async dynupdate(name, operation = 'ADD|DELETE', data = {}) {
             if (operation === 'DELETE') {
-                if (name instanceof Set) {
-                    this.$emit('update:listdata', this.listdata.filter(value => !name.has(value.Key)));
-                    return;
-                }
-                this.$emit('update:listdata', this.listdata.filter(value => value.Key !== name));
-                return;
+                // if (name instanceof Set) {
+                //     this.$emit('update:listdata', this.listdata.filter(value => !name.has(value.Key)));
+                //     return;
+                // }
+                // this.$emit('update:listdata', this.listdata.filter(value => value.Key !== name));
+                // return;
+                this.$emit('goPath');
             }
             if (operation === 'ADD') {
                 const myArr = Array.from(this.listdata);
@@ -156,61 +175,67 @@ const data = {
             switch (type) {
                 case 'delete': {
                     let errorCount = 0;
-                    const selection_raw = this.$refs.table.getSelectionRows();
                     
                     const deleted = new Set();
-                    const selection = new Set();
-                    for (const i of selection_raw) {
+                    ElMessage.success('正在处理您的请求。这可能需要一些时间。');
+                    const selection_raw = this.$refs.table.getSelectionRows();
+                    const selection = new Array();
+                    const path = this.path;
+                    const { exportContent } = await import('../App/filelistapi.js');
+                    for (const i of selection_raw) try {
                         if (i.dir) {
-                            const content = this.getFolderContents(i.fullKey);
-                            for (const j of content) selection.add(j);
-                        } else {
-                            selection.add({ name: i.fullKey });
+                            // 获取目录里**所有**内容
+                            const tempArr = [];
+                            await exportContent(i.fullKey, tempArr, Object.assign(Object.create(this), {
+                                bucket_name: this.bucket, region_name: this.region,
+                            }), { setDelimiter: false });
+                            selection.push.apply(selection, tempArr.map(v => v.Key));
                         }
+                        else selection.push(i.fullKey);
+                    } catch (error) {
+                        return ElMessageBox.alert('网络请求异常，请重试。' + error, '错误', { type: 'error', confirmButtonText: '好' });
                     }
-
-                    try { await ElMessageBox.confirm(`要删除 ${selection.size} 文件？`, '删除', { type: 'warning', confirmButtonText: '删除', cancelButtonText: '不删除' }) } catch { return }
+                    try { await ElMessageBox.confirm(`要删除 ${selection.length} 文件？`, '删除', { type: 'warning', confirmButtonText: '删除', cancelButtonText: '不删除' }) } catch { return }
                     this.loadingInstance = ElLoading.service({ lock: false, fullscreen: false, target: this.$refs.my });
                     
-                    for (const I of selection) {
-                        const i = (encodeURIComponent(I.name).replace(/\%2F/ig, '/'));
-                        if (!this.usersecret) {
-                            // 未登录，尝试匿名操作
-                            const url = new URL(i, this.oss_name);
-                            try {
-                                const resp = await fetch(url, { method: 'DELETE' });
-                                if (!resp.ok) throw -1;
-                                deleted.add(I.name);
-                            }
-                            catch {
-                                ElMessageBox.alert('此 bucket 不允许匿名写入。请登录后重试。', '错误', { type: 'error', confirmButtonText: '好' });
-                                break;
-                            }
-                            return;
+                    const SIZE = 1000;
+                    for (let i = 0; i < selection.length; i += SIZE) try {
+                        const chunk = selection.slice(i, i + SIZE);
+                        const url = new URL('/?delete', this.oss_name);
+                        const body_parts = [`<?xml version="1.0" encoding="UTF-8"?>`, `<Delete>`];
+                        for (const i of chunk) body_parts.push(`<Object><Key>${i}</Key></Object>`);
+                        body_parts.push('</Delete>');
+                        const body = new Blob(body_parts);
+
+                        // 计算 MD5 的二进制数组
+                        const md5Hash = CryptoJS.MD5(await body.text()).toString(CryptoJS.enc.Latin1);
+                        // 将二进制数组转换为 Base64
+                        const contentMD5 = CryptoJS.enc.Base64.stringify(CryptoJS.enc.Latin1.parse(md5Hash));
+
+                        const date = new Date();
+                        const myHead = { 'x-oss-content-sha256': 'UNSIGNED-PAYLOAD', 'x-oss-date': ISO8601(date), 'content-md5': contentMD5 };
+                        const resp = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                Authorization: await sign_header(url, {
+                                    access_key_id: this.username, access_key_secret: this.usersecret, date, bucket: this.bucket, region: this.region,
+                                    expires: 300, additionalHeadersList: myHead, method: 'POST',
+                                }),
+                                ...myHead
+                            },
+                            body,
+                        });
+                        const json = xml2json(await resp.text());
+                        if (Array.isArray(json.Deleted)) for (const i of json.Deleted) {
+                            deleted.add(i.Key || i.Prefix);
                         }
-                        // 登录状态
-                        const url = new URL(i, this.oss_name);
-                        try {
-                            const resp = await fetch(await sign_url(url, {
-                                access_key_id: this.username,
-                                access_key_secret: this.usersecret,
-                                expires: 30,
-                                bucket: this.bucket,
-                                region: this.region,
-                                method: 'DELETE',
-                            }), {
-                                method: 'DELETE',
-                            });
-                            if (!resp.ok) throw -1;
-                            deleted.add(I.name);
-                        }
-                        catch {
-                            ++errorCount;
-                            continue;
-                        }
+                        else if (json.Deleted) deleted.add(json.Deleted.Key);
+                        errorCount += (chunk.length - deleted.length); 
+                    } catch (error) {
+                        ElMessageBox.alert('网络请求异常，请重试。' + error, '错误', { type: 'error', confirmButtonText: '好' });
                     }
                     this.dynupdate(deleted, 'DELETE');
-                    if (errorCount) ElMessageBox.alert(errorCount + ' 文件删除失败。请检查文件是否存在，或者您是否有权限删除此文件。', '错误', { type: 'error', confirmButtonText: '好' });
+                    if (errorCount > 0) ElMessageBox.alert(errorCount + ' 文件删除失败。请检查文件是否存在，或者您是否有权限删除此文件。', '错误', { type: 'error', confirmButtonText: '好' });
                     else ElMessage.success('删除成功');
                     this.loadingInstance.close();
                     this.loadingInstance = null;
@@ -243,13 +268,12 @@ const data = {
                     if (!path.endsWith('/')) path += '/';
                     const selection_raw = this.$refs.table.getSelectionRows();
                     const selection = new Array();
-                    for (const i of selection_raw) {
-                        if (i.dir) {
-                            const content = this.getFolderContents(i.fullKey);
-                            for (const j of content) selection.push(j.name);
-                        } else {
-                            selection.push(i.fullKey);
-                        }
+                    let hasDir = false;
+                    for (const i of selection_raw)
+                        if (i.dir) { hasDir = true; break }
+                        else selection.push(i.fullKey);
+                    if (hasDir) {
+                        return this.$refs.downloadFolderDialog.showModal();
                     }
                     this.$emit('download', selection);
                     break;
@@ -287,9 +311,7 @@ const data = {
             }
         },
         goPath($event) {
-            if (!$event.endsWith('/')) {
-                return ElMessage.warning('当前模式下不支持非斜杠结尾的文件筛选器模式');
-            }
+            if (!$event.endsWith('/')) $event += '/';
             if ($event.startsWith('//')) $event = $event.substring(1);
             this.$emit('goPath', $event);
         },
@@ -301,6 +323,7 @@ const data = {
         },
         // 查找隐式目录的最近修改时间（取目录下最新文件的修改时间）
         findImplicitDirTime(dirPrefix) {
+            throw new Error('deprecated')
             return this.listdata
                 .filter(item => item.Key.startsWith(dirPrefix) && !item.Key.endsWith('/'))
                 .reduce((latest, item) => {
@@ -311,6 +334,7 @@ const data = {
         },
         // 新增方法：获取指定文件夹下的所有文件（包含嵌套文件）
         getFolderContents(folderKey) {
+            throw new Error('deprecated')
             // 确保文件夹路径以斜杠结尾
             const normalizedKey = folderKey.endsWith('/') ? folderKey : `${folderKey}/`
 
@@ -327,7 +351,28 @@ const data = {
                 return isInFolder && !isFolderMarker// && !isSubFolderMarker
             }).map(value => ({ name: value.Key }));
         },
-
+        async getContentLinkOnly() {
+            this.$refs.downloadFolderDialog.close();
+            ElMessage.success('正在处理您的请求。这可能需要一些时间。');
+            const selection_raw = this.$refs.table.getSelectionRows();
+            const selection = new Array();
+            const path = this.path;
+            const { exportContent } = await import('../App/filelistapi.js');
+            for (const i of selection_raw)
+                if (i.dir) {
+                    // 获取目录里**所有**内容
+                    const tempArr = [];
+                    await exportContent(i.fullKey, tempArr, Object.assign(Object.create(this), {
+                        bucket_name: this.bucket, region_name: this.region,
+                    }), { setDelimiter: false });
+                    selection.push.apply(selection, tempArr.map(v => v.Key));
+                }
+                else selection.push(i.fullKey);
+            this.$emit('download', selection);
+        },
+        getSaveToDir() {
+            ElMessage.error('暂未实现，请尝试其他方式')
+        },
     },
 
     template: await getHTML(import.meta.url, componentId),

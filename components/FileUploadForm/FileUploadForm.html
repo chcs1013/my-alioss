@@ -35,8 +35,11 @@
                 style="flex: 1" multiple />
         </ElFormItem>
 
-        <ElFormItem label="公告">
-            <div>近日发现部分广告拦截器会拦截疑似广告的请求，导致误伤部分 OSS 中文件。如果遇到某个文件上传异常（其他文件没有问题）时，请尝试禁用您的广告拦截器。</div>
+        <ElFormItem label="公告" v-if="!closedAnnouncement">
+            <div style="line-height: initial;">
+                <span v-text="annvalue.content.text"></span>
+                <a style="margin-left: 0.5em;" href="javascript:" @click.prevent="closeAnnouncement">好</a>
+            </div>
         </ElFormItem>
 
         <p v-if="!useNewUploader" style="color: #d81b60;">* 限制:<br><ul style="color: black;"><li>不能上传文件夹</li><li>不能上传大文件</li><li>不能显示上传进度</li></ul>更新浏览器以解除限制。</p>
@@ -63,11 +66,11 @@
         <div style="border: 1px solid #ccc; border-radius: 10px; margin-bottom: 18px; padding: 10px;">
             <div v-deep class="chosen-header">
                 <div><span>已选择的文件 ({{selected.size}}) (点击以重命名)</span><br><span style="font-size: small; color: red;">* 切换到文件列表将导致当前选择丢失!</span></div>
-                <span style="padding-bottom:10px"><ElButton plain type="danger" :disabled="isLoading" @click="useNewUploader ? removeHandle(true) : removeItem(true)"><ElIcon><Delete /></ElIcon></ElButton></span>
+                <span style="padding-bottom:10px"><ElButton plain type="danger" :disabled="isLoading" @click="removeApi(true)"><ElIcon><Delete /></ElIcon></ElButton></span>
             </div>
             <div v-if="selected.size" v-for="item in selectedInfo" class="file-item" v-deep>
                 <TextEdit v-deep :modelValue="item.name" @update:modelValue="updateItemName(item.id, $event)"></TextEdit>
-                <span><ElButton plain v-deep class="btn-delete-item" type="danger" :disabled="isLoading" @click="useNewUploader ? removeHandle(item.id, item.name) : removeItem(item.id, item.name)"><ElIcon><Delete /></ElIcon></ElButton></span>
+                <span><ElButton plain v-deep class="btn-delete-item" type="danger" :disabled="isLoading" @click="removeApi(item.id, item.name)"><ElIcon><Delete /></ElIcon></ElButton></span>
             </div>
             <div v-else>Nothing</div>
         </div>

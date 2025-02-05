@@ -32,6 +32,8 @@ const data = {
                 timeStart: 0, timeCost: 0,
                 done_total: 0, done_success: 0, done_failure: 0,
             },
+            closedAnnouncement: true,
+            annvalue: {},
         }
     },
 
@@ -87,6 +89,11 @@ const data = {
         },
         removeItem(opt, itemName) { console.error('[FileUploadForm]', 'deprecated') },   // 过会再删，防止莫名其妙bug
         removeHandle(opt, itemName) { console.error('[FileUploadForm]', 'deprecated') }, // 过会再删，防止莫名其妙bug
+
+        closeAnnouncement() {
+            this.closedAnnouncement = !0;
+            localStorage.setItem('Project:MyAliOSS;Type:User;Key:Announcement/Upload', this.annvalue.id);
+        },
 
         async get_enabled_full_mime_types() {
             this.$emit('update:is_loading', true);
@@ -245,13 +252,13 @@ const data = {
             }
         },
         updateItemName(id, newValue) {
+            const value = this.selected.get(id);
             // 需要先检查目标文件名是否已经存在
             if (this.selectedInternal_fname2id.has(newValue)) {
                 ElMessage.info('目标文件名已添加，正在进行替换。');
                 // 清理资源
                 this.removeApi(this.selectedInternal_fname2id.get(newValue), newValue);
             }
-            const value = this.selected.get(id);
             // 可以释放旧的文件名
             this.selectedInternal_fname2id.delete(value.user_id || value.name);
             this.selectedInternal_fname2id.set(newValue, id);
@@ -327,6 +334,11 @@ const data = {
     mounted() {
         this.$nextTick(() => this.uploadForm.remotePath = this.path);
         this.$nextTick(() => ((this.fsapiNotSupported) && (this.useNewUploader = false)));
+        fetch(import.meta.url + '/../announcement.json').then(v => v.json()).then(v => {
+            this.annvalue = v;
+            if (localStorage.getItem('Project:MyAliOSS;Type:User;Key:Announcement/Upload') !== v.id)
+                this.closedAnnouncement = false;
+        }).catch(e => console.error('[announcement]', 'failed to load:', e));
     },
 
     watch: {

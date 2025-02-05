@@ -22,7 +22,7 @@
             @row-click="toggleRowSelection"
         >
             <ElTableColumn type="selection" width="40" />
-            <ElTableColumn show-overflow-tooltip sortable prop="name" label="文件名" width="800">
+            <ElTableColumn show-overflow-tooltip sortable prop="name" label="文件名" width="400">
                 <template #default="scope">
                     <template v-if="scope.row.dir">
                         <div v-deep class="is-item item-type-dir"><a href="javascript:" @click.prevent.stop="$emit('goPath', path + scope.row.name + '/')">{{scope.row.name}}</a></div>
@@ -49,6 +49,15 @@
             @current-change="onCurrentChange"
             style="place-content:center" />
     </div>
+
+    <dialog ref="downloadFolderDialog" @cancel.prevent>
+        <h1 style="margin-top: 0; text-align: center;">下载文件夹</h1>
+        <div style="margin-bottom: 0.5em;"><a href="javascript:" @click.prevent="getContentLinkOnly">仅获取链接(逐个下载)</a></div>
+        <div v-if="fsapiNotSupported">您的浏览器不支持文件夹下载。<a href="#" @click.prevent="$refs.downloadFolderDialog.close()">取消</a></div>
+        <template v-else>
+            <div><a href="#" @click.prevent="getSaveToDir">保存到文件夹</a></div>
+        </template>
+    </dialog>
 
 <style v-deep>
 style>>> {
