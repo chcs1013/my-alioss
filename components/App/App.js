@@ -37,7 +37,7 @@ const data = {
             // buckets: [],
             listdata: [],
             loadingInstance: null,
-            path: '/',
+            path: '/', path_previous_update: '',
             bucket_name_loader_PromiseObject: { a: null, b: null, c: null, d: null, e: 0, f: '' },
             active_panel: 'file',
             loadCopyRightFrame: false,
@@ -92,75 +92,71 @@ const data = {
         async update() {
             if (this.m__updateLock) return;
             this.m__updateLock = true;
-            if (!this.loadingInstance) {
+            let llid = 0;
+            if (!this.loadingInstance) llid = setTimeout(() => {
                 this.loadingInstance = ElLoading.service({ lock: false, fullscreen: false, target: this.$refs.main_ui });
-            }
+            }, 200);
             // console.log('created loading service in FileExplorer:', this.loadingInstance);
 
             let err;
             try {
                 if(!this.usersecret) throw '未登录状态下无法列举 Bucket，只能通过路径访问或上传文件。';
-                // list buckey
-                const url = new URL('/?list-type=2', this.oss_name);
-                if (this.path.length > 1) url.searchParams.append('prefix', this.path.substring(1));
-                if (!this.bucket_name) {
-                    ({ bucket: this.bucket_name, region: this.region_name } = await this.getBucketName(this.oss_name));
-                }
-                // stringToSign = `GET\n\n\n${date}\nx-oss-date:${date}\n/${this.bucket_name}${decodeURIComponent(url.pathname)}`;
-                // const resp = await fetch(url, {
-                //     method: 'GET',
-                //     headers: {
-                //         'x-oss-date': date,
-                //         Authorization: await getAuthorizationHeader(this.username, this.usersecret, stringToSign),
-                //     }
-                // });
-                const date = new Date();
-                // await sign_url(url, {
-                //     access_key_id: this.username,
-                //     access_key_secret: this.usersecret,
-                //     expires: 60,
-                //     bucket: this.bucket_name,
-                //     region: this.region_name,
-                //     date,
-                // })
-                const myHead = {
-                    'x-oss-content-sha256': 'UNSIGNED-PAYLOAD',
-                    'x-oss-date': ISO8601(date),
-                };
-                const resp = await fetch(url, {
-                    method: 'GET',
-                    headers: {
-                        Authorization: await sign_header(url, {
-                            access_key_id: this.username,
-                            access_key_secret: this.usersecret,
-                            date,
-                            expires: 60,
-                            bucket: this.bucket_name,
-                            region: this.region_name,
-                            additionalHeadersList: myHead
-                        }),
-                        ...myHead
+                // list bucket
+                let token = null;
+                while (1) {
+                    const url = new URL('/?list-type=2&max-keys=1000', this.oss_name);
+                    url.searchParams.append('delimiter', '/');
+                    if (this.path.length > 1) url.searchParams.append('prefix', this.path.substring(1));
+                    if (!this.bucket_name) {
+                        ({ bucket: this.bucket_name, region: this.region_name } = await this.getBucketName(this.oss_name));
                     }
-                });
-                const json = xml2json(await resp.text());
-                // console.log(json);
+                    if (token) url.searchParams.append('continuation-token', token);
+                    const date = new Date();
+                    const myHead = {
+                        'x-oss-content-sha256': 'UNSIGNED-PAYLOAD',
+                        'x-oss-date': ISO8601(date),
+                    };
+                    const resp = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            Authorization: await sign_header(url, {
+                                access_key_id: this.username,
+                                access_key_secret: this.usersecret,
+                                date,
+                                expires: 60,
+                                bucket: this.bucket_name,
+                                region: this.region_name,
+                                additionalHeadersList: myHead
+                            }),
+                            ...myHead
+                        }
+                    });
+                    const json = xml2json(await resp.text());
 
-                if (+json.KeyCount) {
-                    this.listdata = (
-                        json.KeyCount == 1 ?
-                            [json.Contents] : json.Contents
-                    );
-                } else {
-                    this.listdata.length = 0;
-                }
+                    if (!token) {
+                        this.listdata.length = 0;
+                    }
+                    if (+json.KeyCount) {
+                        if ('object' === typeof json.Contents) this.listdata.push(json.Contents);
+                        else this.listdata.push.apply(this.listdata, json.Contents);
+                        if ('object' === typeof json.CommonPrefixes) this.listdata.push(json.CommonPrefixes);
+                        else this.listdata.push.apply(this.listdata, json.CommonPrefixes);
+                    } 
 
-                if (json.EC) {
-                    throw json.Code + ': ' + json.Message;
+                    if (json.EC) {
+                        throw json.Code + ': ' + json.Message;
+                    }
+
+                    if (json.NextContinuationToken) {
+                        token = json.NextContinuationToken;
+                        continue;
+                    }
+                    break;
                 }
-                
             }
             catch (e) { err = e; }
             finally {
+                if (llid) clearTimeout(llid);
                 this.$nextTick(() => {
                     if (this.loadingInstance) {
                         this.loadingInstance.close();
@@ -222,6 +218,7 @@ const data = {
             ElMessage.success('已清除');
         },
         goPath(neewPath) {
+            const previous_update = this.path_previous_update || this.path;
             if (neewPath) this.path = neewPath;
             if (!this.path.startsWith('/')) {
                 this.path = '/' + this.path;
@@ -229,6 +226,17 @@ const data = {
             else if (this.path.startsWith('//')) {
                 this.path = this.path.substring(1);
             }
+            // 只有在刷新时，才从服务器重新拉数据
+            if (neewPath) {
+                // 检测newPath是否是previous_update的子目录
+                // 如果是，则为
+                // 跳转行为，不重新拉数据
+                // 否则，说明跳转到父级文件夹，应重新拉取数据
+                //TODO:
+                const isSubdirectory = neewPath.startsWith(previous_update);
+                if (isSubdirectory) return;
+            }
+            this.path_previous_update = this.path;
             this.isLoading = true;
             this.update()
                 .catch(e => ElMessageBox.alert('无法连接到 OSS。\n' + e, '错误', { type: 'error', confirmButtonText: '好' }))
@@ -541,8 +549,8 @@ const data = {
                 }
                 console.info('[preload]', 'Preload data has been applied');
             } catch (e) {
-                console.warn('[preload]', 'Invalid preload data has been found: ', preload, '\n Falling back to normal mode.');
-                ElMessage.warn('无法处理的预加载数据。');
+                console.warn('[preload]', 'Invalid preload data has been found\nFalling back to normal mode.');
+                ElMessage.warning('无法处理的预加载数据。');
             }
             if (!url.searchParams.has('debug')) import('./replacelocationparams.js');
 

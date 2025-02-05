@@ -3,8 +3,9 @@
         <div v-deep>
             <ElButton size="small" @click="operate('dl')">下载/获取链接</ElButton>
             <ElButton size="small" @click="operate('meta')">元数据</ElButton>
+            <ElButton size="small"><ElTooltip effect=dark content="此功能已弃用，不再继续维护。"><ElCheckbox size="small" v-model="showAll">显示所有文件</ElCheckbox></ElTooltip></ElButton>
         </div>
-        <div v-deep style="margin-top: 0.5em;">
+        <div v-deep style="margin-top: 0.5em;" v-if="!showAll">
             <ElButton size="small" @click="operate('newdir')">新建文件夹</ElButton>
             <ElButton size="small" type="danger" plain @click="operate('delete')">删除</ElButton>
             <ElButton size="small" @click="$emit('goPath')">
@@ -14,7 +15,7 @@
             </ElButton>
         </div>
     </div>
-    <ExplorerNavBar :path="path" @openPath="$emit('goPath', $event)" />
+    <ExplorerNavBar :path="path" @openPath="goPath" />
     <div class="bottom-view" v-deep style="display: flex; flex-direction: column; overflow: hidden; flex: 1;">
         <ElTable :data="file_list" border style="width:100%;flex:1;margin-bottom:10px"  ref="table"
             :default-sort="{ prop: 'name' }"
@@ -23,7 +24,12 @@
             <ElTableColumn type="selection" width="40" />
             <ElTableColumn show-overflow-tooltip sortable prop="name" label="文件名" width="800">
                 <template #default="scope">
-                    
+                    <template v-if="scope.row.dir">
+                        <div v-deep class="is-item item-type-dir"><a href="javascript:" @click.prevent.stop="$emit('goPath', path + scope.row.name + '/')">{{scope.row.name}}</a></div>
+                    </template>
+                    <template v-else>
+                        <div v-deep class="is-item item-type-file">{{scope.row.name}}</div>
+                    </template>
                 </template>
             </ElTableColumn>
             <ElTableColumn show-overflow-tooltip sortable prop="size" label="文件大小" width="110" />
@@ -47,6 +53,27 @@
 <style v-deep>
 style>>> {
     display: none !important;
+}
+.is-item>>> {
+    display: flex;
+    align-items: center;
+}
+.is-item>>>::before {
+    content: "";
+    display: block;
+    width: var(--size); height: var(--size); min-width: var(--size); min-height: var(--size);
+    margin-right: 0.5em;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    object-fit: contain;
+    --size: 16px;
+}
+.is-item.item-type-dir>>>::before {
+    background-image: url(./assets/img/shell/folder.png);
+}
+.is-item.item-type-file>>>::before {
+    background-image: url(./assets/img/shell/file.png);
 }
 </style>
 </div>

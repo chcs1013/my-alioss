@@ -35,6 +35,10 @@
                 style="flex: 1" multiple />
         </ElFormItem>
 
+        <ElFormItem label="公告">
+            <div>近日发现部分广告拦截器会拦截疑似广告的请求，导致误伤部分 OSS 中文件。如果遇到某个文件上传异常（其他文件没有问题）时，请尝试禁用您的广告拦截器。</div>
+        </ElFormItem>
+
         <p v-if="!useNewUploader" style="color: #d81b60;">* 限制:<br><ul style="color: black;"><li>不能上传文件夹</li><li>不能上传大文件</li><li>不能显示上传进度</li></ul>更新浏览器以解除限制。</p>
 
         <ElFormItem v-if="useNewUploader" label="本地文件" prop="localFile">

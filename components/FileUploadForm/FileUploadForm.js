@@ -56,9 +56,11 @@ const data = {
 
     methods: {
         confirmCancel() {
-            this.$emit('update:active_panel', 'file');
-            this.$emit('update:is_loading', false);
             this.$emit('goPath'); // 刷新列表
+            this.$nextTick(() => this.$nextTick(() => {
+                this.$emit('update:active_panel', 'file');
+                this.$emit('update:is_loading', false);
+            }));
         },
 
         addFileFromInput() {
@@ -247,7 +249,7 @@ const data = {
             if (this.selectedInternal_fname2id.has(newValue)) {
                 ElMessage.info('目标文件名已添加，正在进行替换。');
                 // 清理资源
-                this['remove' + (this.useNewUploader ? 'Handle' : 'Item')](this.selectedInternal_fname2id.get(newValue), newValue);
+                this.removeApi(this.selectedInternal_fname2id.get(newValue), newValue);
             }
             const value = this.selected.get(id);
             // 可以释放旧的文件名

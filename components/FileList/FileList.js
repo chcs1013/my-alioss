@@ -17,6 +17,7 @@ const data = {
             pageSize: 20,
             total_files: 0,
             loadingInstance: null,
+            showAll: false,
         }
     },
 
@@ -39,41 +40,99 @@ const data = {
 
     computed: {
         file_list() {
-            const basePath = this.path.substring(1); // 为了符合 Linux 的文件管理习惯，我们采用以“/”开头的路径模式，在实际对接API时需处理掉
-            return this.listdata.map((value, index) => {
+            if (this.showAll) return this.listdata.map((value, index) => {
                 const data = {
                     name: value.Key,
-                    size: prettyPrintFileSize(+value.Size),
+                    size: (+value.Size),
                     time: new Date(value.LastModified).toLocaleString(),
                     type: value.Type,
                     class: value.StorageClass,
-                    is_directory: value.Key.includes('/'),
-                }
-                if (data.is_directory) {
-                    /* TODO:
-                    value.Key 是 文件在OSS中的完整路径，例如 data/user/0/path/to/file.txt
-                    basePath 是用户的“当前路径”，类似于`pwd`，也可以是一个“prefix”
-                    例如，文件 data/1.txt 可以被以下 basePath 匹配：
-                    da
-                    dat
-                    data/
-                    但不能被以下 basePath 匹配：
-                    dat/
-                    我们的要求是：
-                    我们只显示“当前目录”下的**直属**文件。例如，
-                    当前目录：data/
-                    文件有：[data/1.txt, data/2.txt, data/user1/3.txt, data/sub/path/to/file4.txt]
-                    显示内容：
-                    【文件夹】user1
-                    【文件夹】sub
-                    【文件】1.txt
-                    【文件】2.txt
-                    可能需要修改相关数据结构，例如可能需要更改`map`的使用。
-                    */
-                }
+                    fullKey: value.Key,
+                } 
                 return data
             });
-        },
+            const basePath = this.path === '/' ? '' : this.path.substring(1); // 处理根目录
+            const currentDepth = basePath.split('/').filter(p => p).length; // 当前路径层级
+
+            // 用于收集所有可能的文件/文件夹
+            const items = new Map(); // 用Map实现自动去重和快速查找
+
+            this.listdata.forEach(item => {
+                // 只处理属于当前路径下的对象
+                if (!item.Key.startsWith(basePath)) return;
+
+                // 获取相对路径（去掉basePath前缀）
+                const relPath = item.Key.slice(basePath.length);
+
+                // 分割路径层级（过滤空段）
+                const segments = relPath.split('/').filter(p => p !== '');
+
+                // 排除当前路径自身（当basePath是完整路径时）
+                if (relPath === '' && item.Size === 0) return;
+
+                // CASE 1: 显式目录（以/结尾的0字节对象）
+                if (item.Key.endsWith('/') && item.Size === 0) {
+                    const dirName = segments[0] + '/';
+                    if (!items.has(dirName)) {
+                        items.set(dirName, {
+                            name: segments[0],
+                            isExplicit: true,
+                            type: item.Type,
+                            class: '',
+                            dir: true,
+                            size: '',
+                            time: new Date(item.LastModified).toLocaleString(),
+                            fullKey: item.Key
+                        });
+                    }
+                    return;
+                }
+
+                // CASE 2: 处理隐式目录和文件
+                if (segments.length === 0) return; // 排除空路径
+
+                // 当前路径下的直属文件
+                if (segments.length === 1 && !item.Key.endsWith('/')) {
+                    const fileName = segments[0];
+                    if (!items.has(fileName)) {
+                        items.set(fileName, {
+                            name: fileName,
+                            type: item.Type,
+                            class: item.StorageClass,
+                            dir: false,
+                            size: (+item.Size),
+                            time: new Date(item.LastModified).toLocaleString(),
+                            fullKey: item.Key
+                        });
+                    }
+                    return;
+                }
+
+                // 处理隐式目录（根据深层对象推断出的目录）
+                const firstSegment = segments[0];
+                const implicitDirKey = `${basePath}${firstSegment}/`;
+                const dirName = `${firstSegment}/`;
+
+                if (!items.has(dirName)) {
+                    items.set(dirName, {
+                        name: firstSegment,
+                        isExplicit: false,
+                        type: item.Type,
+                        class: '',
+                        dir: true,
+                        size: '',
+                        time: this.findImplicitDirTime(implicitDirKey), // 需要实现时间推断方法
+                        fullKey: implicitDirKey
+                    });
+                }
+            });
+
+            // 转换为数组并排序（目录在前，文件在后）
+            return Array.from(items.values()).sort((a, b) => {
+                if (a.dir === b.dir) return a.name.localeCompare(b.name);
+                return a.dir ? -1 : 1;
+            });
+        }
     },
 
     methods: {
@@ -97,12 +156,22 @@ const data = {
             switch (type) {
                 case 'delete': {
                     let errorCount = 0;
-                    const selection = this.$refs.table.getSelectionRows();
-                    // console.log(selection);
-                    try { await ElMessageBox.confirm(`要删除 ${selection.length} 文件？`, '删除', { type: 'warning', confirmButtonText: '删除', cancelButtonText: '不删除' }) } catch { return }
-                    this.loadingInstance = ElLoading.service({ lock: false, fullscreen: false, target: this.$refs.my });
-
+                    const selection_raw = this.$refs.table.getSelectionRows();
+                    
                     const deleted = new Set();
+                    const selection = new Set();
+                    for (const i of selection_raw) {
+                        if (i.dir) {
+                            const content = this.getFolderContents(i.fullKey);
+                            for (const j of content) selection.add(j);
+                        } else {
+                            selection.add({ name: i.fullKey });
+                        }
+                    }
+
+                    try { await ElMessageBox.confirm(`要删除 ${selection.size} 文件？`, '删除', { type: 'warning', confirmButtonText: '删除', cancelButtonText: '不删除' }) } catch { return }
+                    this.loadingInstance = ElLoading.service({ lock: false, fullscreen: false, target: this.$refs.my });
+                    
                     for (const I of selection) {
                         const i = (encodeURIComponent(I.name).replace(/\%2F/ig, '/'));
                         if (!this.usersecret) {
@@ -155,7 +224,7 @@ const data = {
                         type: 'info'
                     }).then(v => {
                         v.value && uploadFile({
-                            path: (this.path + '/' + v.value + '/').replace(/\/\//g, '/'),
+                            path: (this.path.substring(1) + '/' + v.value + '/').replace(/\/\//g, '/'),
                             blob: new Blob([]),
                             endpoint: this.oss_name,
                             bucket: this.bucket,
@@ -163,13 +232,8 @@ const data = {
                             username: this.username,
                             usersecret: this.usersecret,
                         }).then(() => {
-                            const date = new Date().getTime();
                             ElMessage.success('操作成功完成。');
-                            this.dynupdate(v.value + '/', 'ADD', {
-                                Key: v.value + '/',
-                                Size: 0, LastModified: date,
-                                Type: 'Normal', Class: ''
-                            });
+                            this.$emit('goPath');
                         }).catch(e => ElMessage.error('操作未能成功完成。' + e));
                     }).catch(() => { });
                     break;
@@ -177,15 +241,25 @@ const data = {
                 case 'dl': {
                     let path = this.path.replace(/\\/g, '/');
                     if (!path.endsWith('/')) path += '/';
-                    const selection = this.$refs.table.getSelectionRows();
-                    this.$emit('download', selection.map(i => i.name));
+                    const selection_raw = this.$refs.table.getSelectionRows();
+                    const selection = new Array();
+                    for (const i of selection_raw) {
+                        if (i.dir) {
+                            const content = this.getFolderContents(i.fullKey);
+                            for (const j of content) selection.push(j.name);
+                        } else {
+                            selection.push(i.fullKey);
+                        }
+                    }
+                    this.$emit('download', selection);
                     break;
                 }
                     
                 case 'meta': {
                     const selection = this.$refs.table.getSelectionRows();
                     if (selection.length != 1) return ElMessage.error('此操作只能选择一个文件');
-                    const url = new URL((encodeURIComponent(selection[0].name).replace(/\%2F/ig, '/')), this.oss_name);
+                    if (selection[0].dir) return ElMessage.error('此操作只能应用于文件');
+                    const url = new URL((encodeURIComponent(selection[0].fullKey).replace(/\%2F/ig, '/')), this.oss_name);
                     const signed_url = await sign_url(url, {
                         access_key_id: this.username,
                         access_key_secret: this.usersecret,
@@ -212,11 +286,46 @@ const data = {
                     break;
             }
         },
+        goPath($event) {
+            if (!$event.endsWith('/')) {
+                return ElMessage.warning('当前模式下不支持非斜杠结尾的文件筛选器模式');
+            }
+            if ($event.startsWith('//')) $event = $event.substring(1);
+            this.$emit('goPath', $event);
+        },
         toggleRowSelection(row) {
             this.$refs.table.toggleRowSelection(row);
         },
         onCurrentChange() {
             
+        },
+        // 查找隐式目录的最近修改时间（取目录下最新文件的修改时间）
+        findImplicitDirTime(dirPrefix) {
+            return this.listdata
+                .filter(item => item.Key.startsWith(dirPrefix) && !item.Key.endsWith('/'))
+                .reduce((latest, item) => {
+                    const mtime = new Date(item.LastModified);
+                    return mtime > latest ? mtime : latest;
+                }, new Date(0))
+                .toLocaleString();
+        },
+        // 新增方法：获取指定文件夹下的所有文件（包含嵌套文件）
+        getFolderContents(folderKey) {
+            // 确保文件夹路径以斜杠结尾
+            const normalizedKey = folderKey.endsWith('/') ? folderKey : `${folderKey}/`
+
+            return this.listdata.filter(item => {
+                // 匹配当前文件夹下的所有对象（包含子目录）
+                const isInFolder = item.Key.startsWith(normalizedKey)
+
+                // 排除文件夹标记对象（显式目录）
+                const isFolderMarker = item.Key.endsWith('/') && item.Size === 0
+
+                // // 排除其他目录的文件夹标记
+                // const isSubFolderMarker = item.Key.slice(normalizedKey.length).includes('/')
+
+                return isInFolder && !isFolderMarker// && !isSubFolderMarker
+            }).map(value => ({ name: value.Key }));
         },
 
     },
