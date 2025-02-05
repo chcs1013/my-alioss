@@ -13,7 +13,7 @@
 case'text':fetch(r).then(v=>v.text()).then(t=>{let p=document.createElement('pre');p.id='ct';ct.replaceWith(p);p.innerText=t}).catch(e=>ct.innerText=e);break;
 case'image':{let p=document.createElement('img');p.id='ct';ct.replaceWith(p);p.src=r;p.onclick=_=>p.classList.toggle('d')};break;
 case'audio':{let p=document.createElement('audio');p.id='ct';ct.replaceWith(p);p.controls=!0;p.src=r;p.play().catch(n)};break;
-case'video':{let p=document.createElement('video');p.id='ct';ct.replaceWith(p);p.controls=!0;p.src=r;p.play().catch(n)};break;
+case'video':{let p=document.createElement('video');p.id='ct';ct.replaceWith(p);p.controls=!0;p.src=r;p.playsInline=!0;p.play().catch(n)};break;
 default:{let p=document.createElement('a');p.id='ct';ct.replaceWith(p);p.href=r;p.innerText='Cannot preview, click to download'}}document.title=r</script>
     <style>body:not(:has(pre)){user-select:none}body:has(video),body:has(audio),body:has(img){background-color: #000;}</style>
     <style>img#ct{cursor:zoom-in}img#ct.d{max-width:unset;max-height:unset;position:absolute;left:0;top:0;cursor:zoom-out}</style>
