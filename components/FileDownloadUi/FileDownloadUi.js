@@ -58,8 +58,8 @@ const data = {
                 if (this.dltype === '1' && this.linkstart === '2' && this.linktime_start) {
                     // 签名URL的起始时间，为避免时钟误差，允许向后偏移15分钟
                     //     -- https://help.aliyun.com/zh/oss/developer-reference/add-signatures-to-urls
-                    common_params.date = new Date(new Date(this.linktime_start).getTime() + 15 * 60000);
-                    this.linktime += 15 * 60000;
+                    common_params.date = new Date(new Date(+this.linktime_start).getTime() + 15 * 60000);
+                    this.linktime = (+this.linktime) + 15 * 60000;
                 }
                 const not_before = this.linktime_start.toLocaleString();
                 for (const i of this.files_to_download) {
