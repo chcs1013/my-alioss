@@ -1,8 +1,7 @@
+export const MONO = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.2/min/vs';
+
 const script = document.createElement('script');
-script.src = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/editor/editor.main.js';
-// const style = document.createElement('link');
-// style.rel = 'stylesheet';
-// style.href = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/editor/editor.main.min.css';
+script.src = MONO + '/editor/editor.main.js';
 document.head.append(script);
 await new Promise((resolve, reject) => {
     script.onload = resolve;
@@ -10,7 +9,7 @@ await new Promise((resolve, reject) => {
 });
 
 await new Promise((resolve, reject) => {
-    require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs' } });
+    require.config({ waitSeconds: 180, paths: { vs: MONO } });
     require.config({
         'vs/nls': {
             availableLanguages: {

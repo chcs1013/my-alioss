@@ -132,19 +132,19 @@
             v-model:listdata="listdata"
             :username="username" :usersecret="usersecret" :oss_name="oss_name" :bucket="bucket_name" :region="region_name"
             ></FileList>
-        <FileUploadForm v-deep class="my-panel" v-if="active_panel === 'upload'" ref="file_upload"
+        <Suspense v-if="active_panel === 'upload'"><FileUploadForm v-deep class="my-panel" ref="file_upload"
             v-model:active_panel="active_panel" v-model:is_loading="isLoading"
             @goPath="goPath"
             :path="path" v-model:has_enabled_full_mime_types="has_enabled_full_mime_types"
             :username="username" :usersecret="usersecret" :oss_name="oss_name" :bucket_name="bucket_name" :region_name="region_name"
-            ></FileUploadForm>
-        <FileDownloadUi class="my-panel" v-deep v-if="active_panel === 'download'"
+            ></FileUploadForm><template #fallback><div class="llui" v-deep>正在加载，请稍候...</div></template></Suspense>
+        <Suspense v-if="active_panel === 'download'"><FileDownloadUi class="my-panel" v-deep
             v-model="files_to_download"
             :username="username" :usersecret="usersecret" :oss_name="oss_name" :bucket="bucket_name" :region="region_name"
-            ></FileDownloadUi>
-        <FileTextEditor class="my-panel" v-deep v-if="active_panel === 'edit'" :selection="fileSelection" @update:active_panel="active_panel = $event"
+            ></FileDownloadUi><template #fallback><div class="llui" v-deep>正在加载，请稍候...</div></template></Suspense>
+        <Suspense v-if="active_panel === 'edit'"><FileTextEditor class="my-panel" v-deep :selection="fileSelection" @update:active_panel="active_panel = $event"
             :username="username" :usersecret="usersecret" :oss_name="oss_name" :bucket="bucket_name" :region="region_name"
-            ></FileTextEditor>
+            ></FileTextEditor><template #fallback><div class="llui" v-deep>正在加载，请稍候... (China users may take up to 2 minutes to finish loading)</div></template></Suspense>
     </div>
 
     <template v-if="!isConnected">
@@ -238,5 +238,9 @@
     }
     main>>> style {
         display: none !important;
+    }
+    .llui>>> {
+        font-size: large;
+        padding: 0 0.5em;
     }
 </style>
