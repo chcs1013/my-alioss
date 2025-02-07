@@ -32,12 +32,6 @@ import { createApp } from 'vue';
 // break long tasks
 await delay();
 
-await import('./components/VList/VList.js');
-await import('./assets/js/filePicker.js');
-
-// break long tasks
-await delay();
-
 updateLoadStat('Loading Vue Application');
 const Vue_App = (await import('./components/App/App.js')).default;
 pg_statistics.AL = new Date() - ST;// app load

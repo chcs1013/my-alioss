@@ -59,7 +59,6 @@ const data = {
                     // 签名URL的起始时间，为避免时钟误差，允许向后偏移15分钟
                     //     -- https://help.aliyun.com/zh/oss/developer-reference/add-signatures-to-urls
                     common_params.date = new Date(new Date(+this.linktime_start).getTime() + 15 * 60000);
-                    this.linktime = (+this.linktime) + 15 * 60000;
                 }
                 const not_before = this.linktime_start.toLocaleString();
                 for (const i of this.files_to_download) {
@@ -74,10 +73,10 @@ const data = {
                         const previewLink = new URL('./preview.html', location.href);
                         const meta = new URL('/', previewLink);
                         // 获取类型
-                        const req = await sign_url(url, {
+                        const req = await sign_url(url, Object.assign(Object.assign({}, common_params), {
                             method: 'HEAD',
-                            ...common_params
-                        });
+                            date: null,
+                        }));
                         const ctype = (await fetch(req, { method: 'HEAD' })).headers.get('content-type').split('/');
                         meta.searchParams.set('type', ctype[0]);
                         meta.searchParams.set('ctype', ctype.join('/'));
@@ -88,7 +87,7 @@ const data = {
                     else i.link = signed_url;
                     if (this.linkstart === '2') i.not_before = not_before;
                     i.type = '临时链接';
-                    i.time_data = new Date(((this.linkstart === '2') ? new Date(this.linktime_start) : new Date()).getTime() + 1000 * (+this.linktime));
+                    i.time_data = new Date(((this.linkstart === '2') ? common_params.date : new Date()).getTime() + 1000 * (+this.linktime));
                     i.time = i.time_data.toLocaleString();
                 }
                 this.hasInit = true;

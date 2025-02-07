@@ -296,7 +296,7 @@ const data = {
                     await exportContent(i.fullKey, tempArr, Object.assign(Object.create(this), {
                         bucket_name: this.bucket, region_name: this.region,
                     }), { setDelimiter: false });
-                    selection.push.apply(selection, tempArr.map(v => v.Key));
+                    selection.push.apply(selection, tempArr.filter(v => (!v.Key.endsWith('/'))).map(v => v.Key));
                 }
                 else selection.push(i.fullKey);
             this.$emit('download', selection);

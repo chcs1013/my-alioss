@@ -24,7 +24,7 @@
             <ElInput type="number" v-model="linktime" :min="1" :max="604800" placeholder="在 1~604800 之间" />
         </label>
         <div v-if="dltype === '1'" style="margin-top: 5px;" v-deep><ElSegmented v-model="linktime_prefilled" :options="linktime_prefill_options" size="small" /></div>
-        <label v-deep class="form-item">
+        <label v-deep class="form-item" v-if="dltype === '1'">
                 <span>使用文件预览器以避免兼容性问题<sup>**</sup>:</span>
             <ElTooltip effect="dark" :content="'计费提示: 需获取对象信息，将按 GET 类请求计费，请按需使用\n\n功能提示: 如果需要使用第三方软件查看内容，请不要选择此项'" placement="top">
                 <ElCheckbox v-model="useBuiltinPreview">使用</ElCheckbox>
