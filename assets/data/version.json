@@ -3,7 +3,7 @@
     "schema_version": 1,
     "data": {
         "values": {
-            "app.version.id": "1.4.1.0"
+            "app.version.id": "1.4.1.1"
         }
     }
 }

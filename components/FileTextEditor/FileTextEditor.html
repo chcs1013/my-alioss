@@ -1,5 +1,5 @@
 <div v-deep v-bind="$attrs" ref="my" class="component-root">
-    <div style="margin-top: 0;" v-if="current_file">正在编辑文件 {{current_file}}</div>
+    <div v-deep class="head" style="margin-top: 0;" v-if="current_file">正在编辑文件 {{current_file}}</div>
     <p style="margin-top: 0;" v-else-if="selection.length">每次只能编辑一个文件。</p>
     <p style="margin-top: 0;" v-else>在“文件列表”中选择文件以编辑。</p>
     <template v-if="current_file">
@@ -16,6 +16,11 @@
 .component-root>>> {
     display: flex;
     flex-direction: column;
+}
+.head>>> {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .editorControls>>> {
     display: flex;

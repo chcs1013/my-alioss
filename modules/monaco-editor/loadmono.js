@@ -1,11 +1,20 @@
-export const MONO = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.2/min/vs';
+let MONO = 'https://unpkg.com/monaco-editor@0.52.2/min/vs';
+// cloudflare is blocked in China: Failed to load resource: net::ERR_SOCKET_NOT_CONNECTED
 
 const script = document.createElement('script');
 script.src = MONO + '/editor/editor.main.js';
 document.head.append(script);
 await new Promise((resolve, reject) => {
     script.onload = resolve;
-    script.onerror = reject;
+    script.onerror = () => {
+        // fallback
+        MONO = './modules/monaco-editor/min/vs';
+        const fallbackScript = document.createElement('script');
+        fallbackScript.src = MONO + '/editor/editor.main.js';
+        document.head.append(fallbackScript);
+        fallbackScript.onload = resolve;
+        fallbackScript.onerror = reject;
+    };
 });
 
 await new Promise((resolve, reject) => {
