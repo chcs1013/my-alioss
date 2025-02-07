@@ -36,7 +36,7 @@ const data = {
         listdata: Array,
 
     },
-    emits: ['update:path', 'update:listdata', 'goPath', 'download'],
+    emits: ['update:path', 'update:listdata', 'update:selection', 'goPath', 'download'],
 
     components: {
         RefreshLeft,
@@ -170,26 +170,31 @@ const data = {
                     break;
                 }
                 
+                case 'newfile':
                 case 'newdir':
-                    ElMessageBox.prompt('输入文件夹名称', '新建文件夹', {
-                        confirmButtonText: '新建文件夹',
+                {
+                    const content = type === 'newfile' ? '文件' : '文件夹';
+                    ElMessageBox.prompt(`输入${content}名称`, `新建${content}`, {
+                        confirmButtonText: `新建${content}`,
                         cancelButtonText: '取消',
                         type: 'info'
                     }).then(v => {
                         v.value && uploadFile({
-                            path: (this.path.substring(1) + '/' + v.value + '/').replace(/\/\//g, '/'),
+                            path: (this.path.substring(1) + '/' + v.value + ((type === 'newfile') ? '' : '/')).replace(/\/\//g, '/'),
                             blob: new Blob([]),
                             endpoint: this.oss_name,
                             bucket: this.bucket,
                             region: this.region,
                             username: this.username,
                             usersecret: this.usersecret,
+                            type: (type === 'newfile') ? 'text/plain' : null,
                         }).then(() => {
                             ElMessage.success('操作成功完成。');
                             this.$emit('goPath');
                         }).catch(e => ElMessage.error('操作未能成功完成。' + e));
                     }).catch(() => { });
                     break;
+                }
                 
                 case 'dl': {
                     let path = this.path.replace(/\\/g, '/');
@@ -297,7 +302,11 @@ const data = {
             this.$emit('download', selection);
         },
         getSaveToDir() {
+            // TODO
             ElMessage.error('暂未实现，请尝试其他方式')
+        },
+        onSelectionChange(s) {
+            this.$emit('update:selection', s);
         },
     },
 

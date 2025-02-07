@@ -1,0 +1,28 @@
+<div v-deep v-bind="$attrs" ref="my" class="component-root">
+    <div style="margin-top: 0;" v-if="current_file">正在编辑文件 {{current_file}}</div>
+    <p style="margin-top: 0;" v-else-if="selection.length">每次只能编辑一个文件。</p>
+    <p style="margin-top: 0;" v-else>在“文件列表”中选择文件以编辑。</p>
+    <template v-if="current_file">
+        <hr style="margin: 0.5em 0;">
+        <monaco-editor v-deep ref="editor" style="flex: 1;"></monaco-editor>
+        <div v-deep class="editorControls">
+            <ElButton type="primary" plain style="flex: 1;" @click="savefile(true)">保存</ElButton>
+            <ElButton type="danger" plain style="flex: 1;" @click="savefile(false)">放弃</ElButton>
+        </div>
+    </template>
+</div>
+
+<style>
+.component-root>>> {
+    display: flex;
+    flex-direction: column;
+}
+.editorControls>>> {
+    display: flex;
+    align-items: center;
+    margin-top: 0.5em;
+}
+.editorControls>>> button {
+    flex: 1;
+}
+</style>

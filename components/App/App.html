@@ -1,4 +1,4 @@
-<main v-deep v-bind="$attrs">
+<main v-deep v-bind="$attrs" @dragover="($event) => (isConnected && checkIfDragIsAllowed($event) && (active_panel = 'upload'))">
     <nav v-deep>
         <b><a href="javascript:" @click.prevent="$refs.oss_info_box.open = true">My AliOSS</a></b>
         <div class="oss-name main-feature flexible-feature" v-deep>
@@ -124,19 +124,15 @@
     <!-- 文件浏览器 -->
     <div class="main-ui" v-deep v-show="isConnected" ref="main_ui">
         <ElTabs v-deep class="top-tabs" v-model="active_panel" @tab-click="handleAppTabClick" :before-leave="() => !isLoading">
-            <ElTabPane :disabled="isLoading" label="文件列表" name="file"></ElTabPane>
-            <ElTabPane :disabled="isLoading" label="上传文件" name="upload"></ElTabPane>
-            <ElTabPane :disabled="isLoading" label="下载文件" name="download"></ElTabPane>
+            <ElTabPane v-for="i in appTabs" :disabled="isLoading" :label="i.text" :name="i.tab" />
         </ElTabs>
         <FileList class="left-panel my-panel" v-deep v-show="active_panel === 'file'"
-            @dragover="active_panel = 'upload'"
-            @goPath="goPath"
-            @download="executeDownloadFn"
+            @goPath="goPath" @download="executeDownloadFn" @update:selection="fileSelection = $event"
             v-model:path="path"
             v-model:listdata="listdata"
             :username="username" :usersecret="usersecret" :oss_name="oss_name" :bucket="bucket_name" :region="region_name"
             ></FileList>
-        <FileUploadForm v-deep class="my-panel" v-if="active_panel === 'upload'" 
+        <FileUploadForm v-deep class="my-panel" v-if="active_panel === 'upload'" ref="file_upload"
             v-model:active_panel="active_panel" v-model:is_loading="isLoading"
             @goPath="goPath"
             :path="path" v-model:has_enabled_full_mime_types="has_enabled_full_mime_types"
@@ -146,6 +142,9 @@
             v-model="files_to_download"
             :username="username" :usersecret="usersecret" :oss_name="oss_name" :bucket="bucket_name" :region="region_name"
             ></FileDownloadUi>
+        <FileTextEditor class="my-panel" v-deep v-if="active_panel === 'edit'" :selection="fileSelection" @update:active_panel="active_panel = $event"
+            :username="username" :usersecret="usersecret" :oss_name="oss_name" :bucket="bucket_name" :region="region_name"
+            ></FileTextEditor>
     </div>
 
     <template v-if="!isConnected">
@@ -229,12 +228,15 @@
     }
     main>>> .main-ui>>> .my-panel>>> {
         flex: 1 1 0%;
-        padding: 1em 0.5em;
+        padding: 0.5em;
         display: flex;
         flex-direction: column;
         overflow: hidden;
     }
     main>>> .main-ui>>> .my-panel>>> {
         padding-top: 0 !important;
+    }
+    main>>> style {
+        display: none !important;
     }
 </style>

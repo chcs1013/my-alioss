@@ -1,4 +1,6 @@
-<div v-deep v-bind="$attrs" ref="my">
+<div v-deep v-bind="$attrs" ref="my" 
+    @keydown.delete="operate('delete')"
+>
     <div class="top-view" v-deep>
         <div v-deep class="flexible-feature main-feature" @keydown.esc="downloadFolderDialogShows = filterDialogShows = false">
             <ElPopover :visible="downloadFolderDialogShows" placement="bottom" title="下载的内容中含有文件夹" width="220" @before-leave="$refs.dl.$el.focus()">
@@ -21,7 +23,13 @@
             </ElPopover>
         </div>
         <div v-deep class="flexible-feature main-feature" style="margin-top: 0.5em;" v-if="!showAll">
-            <ElButton size="small" @click="operate('newdir')">新建文件夹</ElButton>
+            <ElPopover trigger="hover" placement="bottom" width="160" @before-leave="$refs.filter_btn.$el.focus()">
+                <template #reference><ElButton size="small">新建</ElButton></template>
+                <div style="display: flex;">
+                    <ElButton size="small" style="flex: 1;" @click="operate('newfile')">文件</ElButton>
+                    <ElButton size="small" style="flex: 1;" @click="operate('newdir')">文件夹</ElButton>
+                </div>
+            </ElPopover>
             <ElButton size="small" type="danger" plain @click="operate('delete')">删除</ElButton>
             <ElButton size="small" @click="$emit('goPath')">
                 <ElIcon>
@@ -36,6 +44,7 @@
             <ElOption value="meta">元数据</ElOption>
             <ElOption value="preview">预览</ElOption>
             <ElOption value="filter">筛选{{userFilter?'已启用':""}}</ElOption>
+            <ElOption value="newfile">新建文件</ElOption>
             <ElOption value="newdir">新建文件夹</ElOption>
             <ElOption value="delete">删除选中项</ElOption>
             <ElOption value="refresh">刷新</ElOption>
@@ -46,6 +55,7 @@
         <ElTable :data="file_list" border style="width:100%;flex:1;margin-bottom:10px"  ref="table"
             :default-sort="{ prop: 'name' }"
             @row-click="$refs.table.toggleRowSelection($event)"
+            @selection-change="onSelectionChange"
         >
             <ElTableColumn type="selection" width="40" />
             <ElTableColumn show-overflow-tooltip sortable prop="name" label="文件名" width="400">
@@ -69,9 +79,6 @@
     </div>
 
 <style v-deep>
-style>>> {
-    display: none !important;
-}
 .is-item>>> {
     display: flex;
     align-items: center;

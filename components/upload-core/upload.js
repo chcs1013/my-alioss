@@ -174,7 +174,7 @@ function getFileExtension(filePath) {
     return ""; // 如果没有扩展名，返回空字符串
 }
 const chunkSize = 16 * 1024 * 1024, chunkMinFileSize = 32 * 1024 * 1024;
-async function uploadFile({ path: composedPath, blob, cb, endpoint, bucket, region, username, usersecret }) {
+async function uploadFile({ path: composedPath, blob, cb, endpoint, bucket, region, username, usersecret, type }) {
     function delay(ms = 0) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
@@ -190,7 +190,13 @@ async function uploadFile({ path: composedPath, blob, cb, endpoint, bucket, regi
     };
     // 获取扩展名对应的MIME Type
     const extName = getFileExtension(composedPath);
-    const mimeType = blob.type ? blob.type : (extName ?
+    if (!type) {
+        if ('string' === typeof blob.type && blob.type.startsWith('text/')) {
+            // 如果是文本类型，则忽略原blob类型（to use utf8）
+            blob = new Blob([blob]);
+        }
+    }
+    const mimeType = type || blob.type || (extName ?
         GetMimeTypeByExtension(extName) :
         GetMimeTypeByExtension());
     // 如果文件小于指定大小，则直接上传，节省请求次数

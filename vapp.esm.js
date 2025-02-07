@@ -99,7 +99,9 @@ setTimeout(async () => {
         for (const mimeType in json) {
             // 检查当前 MIME 类型的 extensions 数组是否包含目标扩展名
             if (json[mimeType].extensions && json[mimeType].extensions.includes(extension)) {
-                return mimeType; // 如果找到匹配的扩展名，返回对应的 MIME 类型
+                let r = mimeType;
+                if (json[mimeType].charset) r += '; charset=' + json[mimeType].charset;
+                return r; // 如果找到匹配的扩展名，返回对应的 MIME 类型
             }
         }
         return def; // 如果没有找到匹配的扩展名，返回 默认
@@ -154,6 +156,7 @@ setTimeout(() => {
     const preload_list = [
         '@/components/FileUploadForm/FileUploadForm.js',
         '@/components/FileDownloadUi/FileDownloadUi.js',
+        '@/modules/monaco-editor/loadmono.js',
     ];
     for (const i of preload_list) import(i).then(() => {
         console.info('[preload]', 'Module has been successfully prefetched:', i);

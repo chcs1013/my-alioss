@@ -9,6 +9,7 @@ import { defineAsyncComponent } from 'vue';
 const FileList = defineAsyncComponent(() => import('../FileList/FileList.js'));
 const FileUploadForm = defineAsyncComponent(() => import('../FileUploadForm/FileUploadForm.js'));
 const FileDownloadUi = defineAsyncComponent(() => import('../FileDownloadUi/FileDownloadUi.js'));
+const FileTextEditor = defineAsyncComponent(() => import('../FileTextEditor/FileTextEditor.js'));
 
 
 
@@ -44,6 +45,8 @@ const data = {
             has_enabled_full_mime_types: true,
             appVersion: '正在获取...',
             appLoadTime: 0,
+            appTabs: [{ text: '文件列表', tab: 'file' }, { text: '上传文件', tab: 'upload' }, { text: '下载文件', tab: 'download' }, { text: '在线编辑', tab: 'edit' }],
+            fileSelection: [],
         }
     },
 
@@ -52,6 +55,7 @@ const data = {
         FileList,
         FileUploadForm,
         FileDownloadUi,
+        FileTextEditor,
     },
 
     computed: {
@@ -150,6 +154,13 @@ const data = {
             this.user_endpoint2name = {};
             ElMessage.success('已清除');
         },
+        checkIfDragIsAllowed(ev) {
+            const types = ev.dataTransfer.types;
+            if (!types.includes('Files')) return false;
+            ev.preventDefault();
+            ev.dataTransfer.dropEffect = 'copy';
+            return true;
+        },
         goPath(neewPath) {
             if (neewPath) this.path = neewPath;
             if (!this.path.startsWith('/')) {
@@ -223,14 +234,6 @@ const data = {
                     const random_string = '9d5304a2-4ec4-493a-812a-55ab4258c2f3'; //
                     const url = new URL(`https://${this.bucket_name}.oss-${random_region}.aliyuncs.com/${random_string}/?list-type=2`); // random string
                     // // 然而直接fetch会报CORS ERROR，所以我们让用户手动复制粘贴
-                    // const resp = await fetch(url, {
-                    //     method: 'GET',
-                    //     headers: {
-                    //         'x-oss-date': new Date().toUTCString(),
-                    //         Authorization: 'OSS LLLLLLLL:MA==',
-                    //     }
-                    // });
-                    // const resp_json = xml2json(await resp.text());
                     const resp_raw = (await new Promise((resolve, reject) => {
                         this.bucket_name_loader_PromiseObject.c = resolve;
                         this.bucket_name_loader_PromiseObject.d = reject;
@@ -391,7 +394,7 @@ const data = {
                     confirmButtonText: '覆盖',
                     cancelButtonText: '不要继续',
                 });
-                sessionStorage.setItem('Project:MyAliOSS;Type:User;Key:Preload', value);
+                localStorage.setItem('Project:MyAliOSS;Type:User;Key:Preload', value);
                 ElMessage.success('请稍候...');
                 location.reload();
             } catch (e) {
@@ -421,7 +424,7 @@ const data = {
             } catch { }
             
             const url = new URL(location.href);
-            const preload = url.searchParams.get('preload') || sessionStorage.getItem('Project:MyAliOSS;Type:User;Key:Preload');
+            const preload = url.searchParams.get('preload') || localStorage.getItem('Project:MyAliOSS;Type:User;Key:Preload');
             if (preload) try {
                 const json = JSON.parse(atob(preload));
                 if (json.oss_name) this.oss_name = json.oss_name;
@@ -471,8 +474,8 @@ const data = {
             });
 
             queueMicrotask(() => {
-                if (sessionStorage.getItem('Project:MyAliOSS;Type:User;Key:Preload')) {
-                    sessionStorage.removeItem('Project:MyAliOSS;Type:User;Key:Preload');
+                if (localStorage.getItem('Project:MyAliOSS;Type:User;Key:Preload')) {
+                    localStorage.removeItem('Project:MyAliOSS;Type:User;Key:Preload');
                 } 
             });
         });
