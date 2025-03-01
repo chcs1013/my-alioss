@@ -72,7 +72,7 @@ const data = {
                 }));
                 if (!resp.ok) throw `HTTP Error ${resp.status} : ${resp.statusText}\n\n${await resp.text()}`;
                 this.file_type = resp.headers.get('content-type');
-                if (!this.file_type.startsWith('text/')) return this.$refs.editor.value = '非文本文件，无法编辑';
+                // if (!this.file_type.startsWith('text/')) return this.$refs.editor.value = '非文本文件，无法编辑';
                 this.$refs.editor.value = await resp.text();
                 this.$refs.editor.editor.addAction({
                     id: 'saveFile',

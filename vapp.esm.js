@@ -36,6 +36,28 @@ updateLoadStat('Loading Vue Application');
 const Vue_App = (await import('./components/App/App.js')).default;
 pg_statistics.AL = new Date() - ST;// app load
 
+updateLoadStat('set user data');
+const PROJECT_IDENTIFIER = 'Project:MyAliOSS;Type:User;Key:';
+globalThis.u = {
+    get(key) { return localStorage.getItem(PROJECT_IDENTIFIER + key) },
+    set(key, value) { return localStorage.setItem(PROJECT_IDENTIFIER + key, value) },
+    delete(keys) {
+        if (arguments.length < 1) throw new TypeError('key(s) is required');
+        if (arguments.length > 1) {
+            for (const i of arguments) this.delete(i);
+            return true;
+        }
+        if (typeof keys === 'string') return localStorage.removeItem(PROJECT_IDENTIFIER + keys);
+        else if ((!keys) || (!Array.isArray(keys) && typeof keys[Symbol.iterator] !== 'function'))
+            throw new TypeError('Bad argument');
+        for (const i of keys) this.delete(i);
+        return true;
+    },
+}
+
+// break long tasks
+await delay();
+
 updateLoadStat('Creating Vue application');
 const app = createApp(Vue_App);
 globalThis.appInstance_.app = app;

@@ -13,9 +13,6 @@ export async function exportContent(path, refOutputArray, c, { setDelimiter = tr
         const url = new URL('/?list-type=2&max-keys=1000', c.oss_name);
         if (setDelimiter) url.searchParams.append('delimiter', '/');
         if (path.length > 1) url.searchParams.append('prefix', (path[0] === '/') ? path.substring(1) : path);
-        if (!c.bucket_name) {
-            ({ bucket: c.bucket_name, region: c.region_name } = await c.getBucketName(c.oss_name));
-        }
         if (token) url.searchParams.append('continuation-token', token);
         const date = new Date();
         const myHead = {

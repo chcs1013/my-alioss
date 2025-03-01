@@ -131,8 +131,47 @@ const data = {
         },
         openItem(i) {
             if (!this.checkItemAvailability(this.files_to_download[i])) return;
-            // console.log(i);
             window.open(this.files_to_download[i].link, '_blank');
+        },
+        downItem(i) {
+            // 存在bug无法下载
+            const d = this.files_to_download[i];
+            if (!this.checkItemAvailability(d)) return;
+            const a = document.createElement('a');
+            a.download = d.name.includes('/') ? d.name.substring(d.name.lastIndexOf('/') + 1) : d.name;
+            a.href = d.link;
+            a.target = 'downframe';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        },
+        async copySelected() {
+            const str = [];
+            const selection_raw = this.$refs.table.getSelectionRows();
+            if (selection_raw.length<1) return ElMessage.error('没有选中');
+            for (const i of selection_raw) str.push(i.link);
+            try {
+                await navigator.clipboard.writeText(str.join('\n'));
+                ElMessage.success('已复制');
+            } catch {
+                ElMessage.error('无法复制');
+            }
+        },
+        async exportSelected() {
+            const str = [];
+            const selection_raw = this.$refs.table.getSelectionRows();
+            if (selection_raw.length<1) return ElMessage.error('没有选中');
+            for (const i of selection_raw) str.push(i.link);
+            const blob = new Blob(str);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.download = `下载链接 ${new Date().toLocaleString()}.txt`;
+            a.href = url;
+            a.target = 'downframe';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
         },
     },
 

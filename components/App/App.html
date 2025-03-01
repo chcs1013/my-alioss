@@ -3,7 +3,18 @@
         <b><a href="javascript:" @click.prevent="$refs.oss_info_box.open = true">My AliOSS</a></b>
         <div class="oss-name main-feature flexible-feature" v-deep>
             <span>OSS:</span>
-            <ElInput :disabled="isConnected" v-model="oss_name" style="flex: 1; margin: 0 0.5em;" :clearable="true" />
+            <!-- <ElInput :disabled="isConnected" v-model="oss_name" style="flex: 1; margin: 0 0.5em;" :clearable="true" /> -->
+            <ElAutocomplete :disabled="isConnected || isLoading" :clearable="true" 
+                v-model="oss_name" style="flex: 1; margin: 0 0.5em;" 
+                placeholder="Input your endpoint here"
+                :fetch-suggestions="getAutocompleteOssName"
+                @select="oss_name = $event" ref="AC1"
+            ><template #default="{ item }">
+                <div style="display: flex; max-width: 90vw;">
+                    <div style="flex: 1; margin-right: 1em; overflow: hidden; text-overflow: ellipsis;" v-text="item"></div>
+                    <a href="javascript:" @click.self.prevent.stop="deleteAutocompleteOssName(item)" style="font-weight: bold;">x</a>
+                </div>
+            </template></ElAutocomplete>
             <ElCheckbox v-model="logon_data.remember_endpoint" style="margin-right: 0.5em;" v-if="!isConnected">记住</ElCheckbox>
             <ElButton :disabled="isLoading" @click="access" type="primary" plain>{{isConnected ? '断开连接' : '登录'}}</ElButton>
         </div>
@@ -17,6 +28,10 @@
                     <ElMenuItem index="#oss_name">OSS: {{oss_name}}</ElMenuItem>
                     <ElMenuItem index="#oss_memory">{{logon_data.remember_endpoint ? '要' : '不要'}}记住此 Endpoint</ElMenuItem>
                     <ElMenuItem index="#oss_connect">{{isConnected ? '断开连接' : '登录'}}</ElMenuItem>
+                </ElSubMenu>
+                <ElSubMenu index="osss">
+                    <template #title>OSS 记录</template>
+                    <ElMenuItem v-for="item in (getAutocompleteOssName())" :index="'#oss_history_item/' + item">{{item}}</ElMenuItem>
                 </ElSubMenu>
                 <ElMenuItem index="#u">用户：{{username || '未登录'}}</ElMenuItem>
                 <ElMenuItem index="#x">关闭菜单</ElMenuItem>
@@ -130,6 +145,7 @@
             @goPath="goPath" @download="executeDownloadFn" @update:selection="fileSelection = $event"
             v-model:path="path"
             v-model:listdata="listdata"
+            v-model:vcs_enabled="vcs_enabled" v-model:vcs_status="vcs_status"
             :username="username" :usersecret="usersecret" :oss_name="oss_name" :bucket="bucket_name" :region="region_name"
             ></FileList>
         <Suspense v-if="active_panel === 'upload'"><FileUploadForm v-deep class="my-panel" ref="file_upload"
@@ -145,12 +161,26 @@
         <Suspense v-if="active_panel === 'edit'"><FileTextEditor class="my-panel" v-deep :selection="fileSelection" @update:active_panel="active_panel = $event"
             :username="username" :usersecret="usersecret" :oss_name="oss_name" :bucket="bucket_name" :region="region_name"
             ></FileTextEditor><template #fallback><div class="llui" v-deep>正在加载，请稍候... (China users may take up to 2 minutes to finish loading)</div></template></Suspense>
+        <Suspense v-if="active_panel === 'tools'"><TheTools class="my-panel" v-deep @update:active_panel="active_panel = $event"
+            :username="username" :usersecret="usersecret" :oss_name="oss_name" :bucket="bucket_name" :region="region_name"
+            ></TheTools><template #fallback><div class="llui" v-deep>正在加载，请稍候...</div></template></Suspense>
+        <Suspense v-if="active_panel === 'set'"><Settings class="my-panel" v-deep @update:active_panel="active_panel = $event"
+            :username="username" :usersecret="usersecret" :oss_name="oss_name" :bucket="bucket_name" :region="region_name"
+            ></Settings><template #fallback><div class="llui" v-deep>正在加载，请稍候...</div></template></Suspense>
+        <a href="javascript:" style="margin: 1em;" @click.prevent="$refs.oss_info_box.open = true" v-if="active_panel === 'about'">My AliOSS</a>
     </div>
 
     <template v-if="!isConnected">
         <div style="display: flex; flex-direction: column; overflow: hidden; height: 100%; padding: 1em;">
             <h2>请输入有效的 Endpoint 地址。</h2>
-            <div style="display: flex; align-items: center;">OSS:&nbsp;<ElInput v-model="oss_name" /></div>
+            <div style="display: flex; align-items: center;">OSS:&nbsp;<ElAutocomplete :disabled="isConnected || isLoading" :clearable="true" v-model="oss_name" style="flex: 1; margin: 0 0.5em;"
+                placeholder="Input your endpoint here" :fetch-suggestions="getAutocompleteOssName" @select="oss_name = $event" ref="AC2">
+                <template #default="{ item }">
+                    <div style="display: flex; max-width: 90vw;">
+                        <div style="flex: 1; margin-right: 1em; overflow: hidden; text-overflow: ellipsis;" v-text="item"></div>
+                        <a href="javascript:" @click.self="deleteAutocompleteOssName(item)" style="font-size: large;">x</a>
+                    </div>
+                </template></ElAutocomplete></div>
             <p v-deep class="main-feature flexible-feature">前往页面上方以登录。</p>
             <ElCheckbox class="flexible-feature alternative-feature" v-deep v-model="logon_data.remember_endpoint" style="margin-right: 0.5em;" v-if="!isConnected">记住</ElCheckbox>
             <ElButton class="flexible-feature alternative-feature" v-deep :disabled="isLoading" @click="access" type="primary" plain>{{isConnected ? '断开连接' : '登录'}}</ElButton>

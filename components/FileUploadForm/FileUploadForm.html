@@ -14,8 +14,9 @@
     <div v-if="isDropping && useNewUploader" @dragleave.self="isDragging=isDropping=false" @click.self="isDragging=isDropping=false" v-deep class="cover"><div inert style="pointer-events: none;">Drop</div></div>
     <h1>上传文件</h1>
     <ElForm v-deep ref="form" :model="uploadForm" @submit.prevent v-if="!(isLoading || isDone)">
-        <ElFormItem label="重要提示">
+        <ElFormItem label="重要提示" v-if="!closedWarning">
             <span style="color: red; line-height: initial;">切勿通过 Bucket 分享涉黄、涉政、涉恐等违法内容，否则将会导致 Bucket 被切入沙箱。情节严重者，将被追究法律责任。<a href="https://help.aliyun.com/zh/oss/user-guide/oss-sandbox" target="_blank" rel="noopener noreferrer">查看更多&gt;&gt;&gt;</a></span>
+            <a style="margin-left: 1em;" href="javascript:" @click.prevent="closeWarning">好</a>
         </ElFormItem>
 
         <ElFormItem label="上传到" prop="remotePath">

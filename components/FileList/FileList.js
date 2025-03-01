@@ -34,9 +34,11 @@ const data = {
         bucket: String,
         region: String,
         listdata: Array,
+        vcs_enabled: Boolean,
+        vcs_status: String,
 
     },
-    emits: ['update:path', 'update:listdata', 'update:selection', 'goPath', 'download'],
+    emits: ['update:path', 'update:listdata', 'update:selection', 'update:vcs_enabled', 'update:vcs_status', 'goPath', 'download'],
 
     components: {
         RefreshLeft,

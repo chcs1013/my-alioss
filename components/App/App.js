@@ -1,8 +1,9 @@
 import { getHTML } from '@/assets/js/browser_side-compiler.js';
 import { ElMessage, ElMessageBox, ElLoading } from 'element-plus';
 import { xml2json } from '../xml2json/xml2json.js';
-import { RefreshLeft, Fold } from 'icons-vue';
+import { Close, Fold } from 'icons-vue';
 import { defineAsyncComponent } from 'vue';
+import { sign_header, ISO8601 } from '@/sign.js';
 
 
 
@@ -10,6 +11,8 @@ const FileList = defineAsyncComponent(() => import('../FileList/FileList.js'));
 const FileUploadForm = defineAsyncComponent(() => import('../FileUploadForm/FileUploadForm.js'));
 const FileDownloadUi = defineAsyncComponent(() => import('../FileDownloadUi/FileDownloadUi.js'));
 const FileTextEditor = defineAsyncComponent(() => import('../FileTextEditor/FileTextEditor.js'));
+const TheTools = defineAsyncComponent(() => import('../TheTools/TheTools.js'));
+const Settings = defineAsyncComponent(() => import('../Settings/Settings.js'));
 
 
 
@@ -32,12 +35,15 @@ const data = {
                 enabled: true,
             },
             user_endpoint2name: {},
+            oss_history: [],
             showAppTopMenu: false,
             isConnected: false, isLoading: false,
             // buckets: [],
             listdata: [],
             loadingInstance: null,
             path: '/',
+            vcs_enabled: false,
+            vcs_status: null,
             bucket_name_loader_PromiseObject: { a: null, b: null, c: null, d: null, e: 0, f: '' },
             active_panel: 'file',
             loadCopyRightFrame: false,
@@ -45,17 +51,24 @@ const data = {
             has_enabled_full_mime_types: true,
             appVersion: '正在获取...',
             appLoadTime: 0,
-            appTabs: [{ text: '文件列表', tab: 'file' }, { text: '上传文件', tab: 'upload' }, { text: '下载文件', tab: 'download' }, { text: '在线编辑', tab: 'edit' }],
+            appTabs: [
+                { text: '文件', tab: 'file' },
+                { text: '上传', tab: 'upload' }, { text: '下载', tab: 'download' },
+                { text: '编辑', tab: 'edit' },
+                { text: '工具', tab: 'tools' }, { text: '设置', tab: 'set' }, { text: '关于', tab: 'about' }
+            ],
             fileSelection: [],
         }
     },
 
     components: {
-        Fold,
+        Fold, Close,
         FileList,
         FileUploadForm,
         FileDownloadUi,
         FileTextEditor,
+        TheTools,
+        Settings,
     },
 
     computed: {
@@ -69,13 +82,17 @@ const data = {
                     ElMessage.error('此时不能断开连接。');
                     return;
                 }
+                // Execute all cleanup here when disconnect.
                 this.isConnected = false;
                 this.listdata.length = 0;
                 this.bucket_name = '';
                 this.active_panel = 'file';
                 this.path = '/';
+                this.vcs_enabled = false;
+                this.vcs_status = null;
                 return;
             }
+            if (!this.oss_name.startsWith('https://')) this.oss_name = 'https://' + this.oss_name;
             try {
                 new URL(this.oss_name);
             } catch {
@@ -84,7 +101,11 @@ const data = {
             }
             this.isConnected = true;
             if (this.logon_data.remember_endpoint) {
-                localStorage.setItem('Project:MyAliOSS;Type:User;Key:Endpoint', this.oss_name);
+                u.set('Endpoint', this.oss_name);
+                if (!this.oss_history.includes(this.oss_name)) {
+                    this.oss_history.push(this.oss_name);
+                    this.save_oss_history();
+                }
             }
 
             this.isLoading = true;
@@ -105,6 +126,10 @@ const data = {
             try {
                 if(!this.usersecret) throw '未登录状态下无法列举 Bucket，只能通过路径访问或上传文件。';
                 // list bucket
+                if (!this.bucket_name) {
+                    ({ bucket: this.bucket_name, region: this.region_name } = await this.getBucketName(this.oss_name));
+                }
+                // if (!this.vcs_status) await this.GetVcsStatus();
                 const { exportContent } = await import('./filelistapi.js');
                 await exportContent(this.path, this.listdata, this);
             }
@@ -121,9 +146,33 @@ const data = {
             }
             if (err) throw err;
         },
+        async GetVcsStatus() {
+            while (1) {
+                const url = new URL('/?versioning', this.oss_name);
+                const date = new Date();
+                const myHead = {
+                    'x-oss-content-sha256': 'UNSIGNED-PAYLOAD',
+                    'x-oss-date': ISO8601(date),
+                };
+                const resp = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        Authorization: await sign_header(url, {
+                            access_key_id: this.username, access_key_secret: this.usersecret, date, bucket: this.bucket_name, region: this.region_name,
+                            expires: 60, additionalHeadersList: myHead,
+                        }),
+                        ...myHead
+                    }
+                });
+                const json = xml2json(await resp.text());
+
+                console.log(json);
+                break;
+            }
+        },
         async logonUser(isLogon = true) {
             if (!isLogon) {
-                localStorage.removeItem('Project:MyAliOSS;Type:User;Key:AccessKey');
+                u.delete('AccessKey');
                 return location.reload()
             }
             try { await ElMessageBox.confirm('请确认填写的信息准确无误。', 'Access Key 登录', {
@@ -137,20 +186,18 @@ const data = {
             this.username = this.logon_data.access_key_id;
             this.usersecret = this.logon_data.access_key_secret;
             if (this.logon_data.remember) {
-                localStorage.setItem('Project:MyAliOSS;Type:User;Key:AccessKey', JSON.stringify(this.logon_data));
+                u.set('AccessKey', JSON.stringify(this.logon_data));
             }
             this.logon_data.access_key_secret = '';
             ElMessage.success('登录完成');
         },
         clearLogonInfo() {
-            localStorage.removeItem('Project:MyAliOSS;Type:User;Key:AccessKey');
-            localStorage.removeItem('Project:MyAliOSS;Type:User;Key:Endpoint');
-            localStorage.removeItem('Project:MyAliOSS;Type:User;Key:user_endpoint2name');
+            u.delete('AccessKey', 'Endpoint', 'user_endpoint2name', 'UserHistory');
 
             globalThis.location.reload();
         },
         clearEbAssociationInfo() {
-            localStorage.removeItem('Project:MyAliOSS;Type:User;Key:user_endpoint2name');
+            u.delete('user_endpoint2name');
             this.user_endpoint2name = {};
             ElMessage.success('已清除');
         },
@@ -289,7 +336,7 @@ const data = {
                     this.user_endpoint2name[this.oss_name] = {
                         bucket: bucket_name, region: correct_region,
                     };
-                    localStorage.setItem('Project:MyAliOSS;Type:User;Key:user_endpoint2name', JSON.stringify(this.user_endpoint2name));
+                    u.set('user_endpoint2name', JSON.stringify(this.user_endpoint2name));
                 }
             } catch (e) {
                 this.$refs.dlgGuessingBucketName.close();
@@ -325,7 +372,7 @@ const data = {
                 this.user_endpoint2name[this.oss_name] = {
                     bucket: this.bucket_name, region: this.region_name,
                 };
-                localStorage.setItem('Project:MyAliOSS;Type:User;Key:user_endpoint2name', JSON.stringify(this.user_endpoint2name));
+                u.set('user_endpoint2name', JSON.stringify(this.user_endpoint2name));
             }
         },
         handleAppTopMenuSelect(data) {
@@ -334,7 +381,10 @@ const data = {
                     this.$refs.oss_info_box.open = true;
                     break;
                 case '#oss_name':
-                    if (this.isConnected || this.isLoading) break;
+                    if (this.isConnected || this.isLoading) {
+                        ElMessage.error('此时不要修改 Endpoint。');
+                        break;
+                    }
                     ElMessageBox.prompt('输入新的 OSS Endpoint:', '输入', {
                         inputValue: this.oss_name,
                         confirmButtonText: '更新',
@@ -357,6 +407,10 @@ const data = {
                     break;
             
                 default:
+                    if (data.startsWith('#oss_history_item/')) {
+                        this.oss_name = data.substring('#oss_history_item/'.length);
+                        this.showAppTopMenu = false;
+                    }
                     break;
             }
         },
@@ -375,6 +429,7 @@ const data = {
                     // 默认不包含 path
                     remember: this.logon_data.remember,
                     remember_endpoint: this.logon_data.remember_endpoint,
+                    oss_history: this.oss_history,
                 };
                 const data = btoa(JSON.stringify(current_config));
                 ElMessageBox.prompt('请复制以下内容，以便下次直接加载：', '预加载数据', {
@@ -394,7 +449,7 @@ const data = {
                     confirmButtonText: '覆盖',
                     cancelButtonText: '不要继续',
                 });
-                localStorage.setItem('Project:MyAliOSS;Type:User;Key:Preload', value);
+                u.set('Preload', value);
                 ElMessage.success('请稍候...');
                 location.reload();
             } catch (e) {
@@ -414,17 +469,41 @@ const data = {
                 if (v.value) ElMessage.success(`${v.value}=${GetMimeTypeByExtension(v.value)}`);
             }).catch(() => { });
         },
+        save_oss_history() {
+            u.set('UserHistory', JSON.stringify(this.oss_history));
+        },
+        getAutocompleteOssName(query, cb) {
+            if (!cb) cb = v => v;
+            if (this.isConnected) return cb([]);
+            if (!query) return cb(this.oss_history);
+            return cb(this.oss_history.filter(v => v && (v.toLowerCase().includes(query.toLowerCase()))));
+        },
+        deleteAutocompleteOssName(data) {
+            const index = this.oss_history.indexOf(data);
+            if (index < 0) return;
+            this.oss_history.splice(index, 1);
+            this.save_oss_history();
+
+            // 解决autocomplete用户体验的问题
+            this.$refs.AC1.close();
+            this.$refs.AC2 && (this.$refs.AC2.close());
+            this.isLoading = true;
+            this.$nextTick(() => this.$nextTick(() => {
+                this.isLoading = false;
+                document.documentElement.focus()
+            }));
+        },
     },
 
     mounted() {
         this.$nextTick(() => {
-            const user_endpoint2name = localStorage.getItem('Project:MyAliOSS;Type:User;Key:user_endpoint2name');
+            const user_endpoint2name = u.get('user_endpoint2name');
             if (user_endpoint2name) try {
                 this.user_endpoint2name = JSON.parse(user_endpoint2name);
             } catch { }
             
             const url = new URL(location.href);
-            const preload = url.searchParams.get('preload') || localStorage.getItem('Project:MyAliOSS;Type:User;Key:Preload');
+            const preload = url.searchParams.get('preload') || u.get('Preload');
             if (preload) try {
                 const json = JSON.parse(atob(preload));
                 if (json.oss_name) this.oss_name = json.oss_name;
@@ -433,24 +512,25 @@ const data = {
                 if (json.bucket_name) this.bucket_name = json.bucket_name;
                 if (json.region_name) this.region_name = json.region_name;
                 if (json.path) this.path = json.path;
+                if (json.oss_history) this.oss_history = json.oss_history;
                 if (json.remember_endpoint) this.logon_data.remember_endpoint = json.remember_endpoint;
                 if (json.remember) this.logon_data.remember = json.remember;
 
                 // 下面开始处理调用函数部分，以使数据同步
                 if (json.username && json.usersecret) {
                     if (this.logon_data.remember) {
-                        localStorage.setItem('Project:MyAliOSS;Type:User;Key:AccessKey', JSON.stringify({ access_key_id: json.username, access_key_secret: json.usersecret }));
+                        u.set('AccessKey', JSON.stringify({ access_key_id: json.username, access_key_secret: json.usersecret }));
                     }
                 }
                 if (json.oss_name && this.logon_data.remember_endpoint) {
-                    localStorage.setItem('Project:MyAliOSS;Type:User;Key:Endpoint', this.oss_name);
+                    u.set('Endpoint', this.oss_name);
                 }
                 if (json.bucket_name && json.region_name) {
                     this.user_endpoint2name[this.oss_name] = {
                         bucket: json.bucket_name,
                         region: json.region_name,
                     }
-                    localStorage.setItem('Project:MyAliOSS;Type:User;Key:user_endpoint2name', JSON.stringify(this.user_endpoint2name));
+                    u.set('user_endpoint2name', JSON.stringify(this.user_endpoint2name));
                 }
                 console.info('[preload]', 'Preload data has been applied');
             } catch (e) {
@@ -460,22 +540,30 @@ const data = {
             if (!url.searchParams.has('debug')) import('./replacelocationparams.js');
 
             this.$nextTick(() => {
-                const user_data_str = localStorage.getItem('Project:MyAliOSS;Type:User;Key:AccessKey');
+                const user_data_str = u.get('AccessKey');
                 if (user_data_str) try {
                     const user_data = JSON.parse(user_data_str);
                     this.username = user_data.access_key_id;
                     this.usersecret = user_data.access_key_secret;
                     this.logon_data.access_key_id = user_data.access_key_id;
                 } catch {}
-                const endpoint_str = localStorage.getItem('Project:MyAliOSS;Type:User;Key:Endpoint');
+                const endpoint_str = u.get('Endpoint');
                 if (endpoint_str) {
                     this.oss_name = endpoint_str;
+                }
+                const oss_history = u.get('UserHistory');
+                if (oss_history) try {
+                    const data = JSON.parse(oss_history);
+                    if (!Array.isArray(data)) throw 0;
+                    this.oss_history = data;
+                } catch {
+                    u.set('UserHistory', '[]');
                 }
             });
 
             queueMicrotask(() => {
-                if (localStorage.getItem('Project:MyAliOSS;Type:User;Key:Preload')) {
-                    localStorage.removeItem('Project:MyAliOSS;Type:User;Key:Preload');
+                if (u.get('Preload')) {
+                    u.delete('Preload');
                 } 
             });
         });

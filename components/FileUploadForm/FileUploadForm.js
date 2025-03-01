@@ -35,6 +35,7 @@ const data = {
                 done_total: 0, done_success: 0, done_failure: 0,
             },
             closedAnnouncement: true,
+            closedWarning: false,
             annvalue: {},
         }
     },
@@ -91,9 +92,13 @@ const data = {
         removeItem(opt, itemName) { console.error('[FileUploadForm]', 'deprecated') },   // 过会再删，防止莫名其妙bug
         removeHandle(opt, itemName) { console.error('[FileUploadForm]', 'deprecated') }, // 过会再删，防止莫名其妙bug
 
+        closeWarning() {
+            this.closedWarning = !0;
+            u.set('Warning/Upload', 1);
+        },
         closeAnnouncement() {
             this.closedAnnouncement = !0;
-            localStorage.setItem('Project:MyAliOSS;Type:User;Key:Announcement/Upload', this.annvalue.id);
+            u.set('Announcement/Upload', this.annvalue.id);
         },
 
         async get_enabled_full_mime_types() {
@@ -337,9 +342,10 @@ const data = {
     mounted() {
         this.$nextTick(() => this.uploadForm.remotePath = this.path);
         this.$nextTick(() => ((this.fsapiNotSupported) && (this.useNewUploader = false)));
+        if (u.get('Warning/Upload') == '1') this.closedWarning = true;
         announcement_class.then(v => {
             this.annvalue = v;
-            if (localStorage.getItem('Project:MyAliOSS;Type:User;Key:Announcement/Upload') !== v.id)
+            if (u.get('Announcement/Upload') !== v.id)
                 this.closedAnnouncement = false;
         }).catch(e => console.error('[announcement]', 'failed to load:', e));
     },
