@@ -1,6 +1,4 @@
-<div v-deep v-bind="$attrs" ref="my" 
-    @keydown.delete="operate('delete')"
->
+<div v-deep v-bind="$attrs" ref="my">
     <div class="top-view" v-deep>
         <div v-deep class="flexible-feature main-feature" @keydown.esc="downloadFolderDialogShows = filterDialogShows = false">
             <ElPopover :visible="downloadFolderDialogShows" placement="bottom" title="下载的内容中含有文件夹" width="220" @before-leave="$refs.dl.$el.focus()">
@@ -56,6 +54,7 @@
             :default-sort="{ prop: 'name' }"
             @row-click="$refs.table.toggleRowSelection($event)"
             @selection-change="onSelectionChange"
+            @keydown="($event.key === 'Delete') && operate('delete')"
         >
             <ElTableColumn type="selection" width="40" />
             <ElTableColumn show-overflow-tooltip sortable prop="name" label="文件名" width="400">
