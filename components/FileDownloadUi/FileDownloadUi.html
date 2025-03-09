@@ -50,7 +50,7 @@
             <ElTableColumn prop="link" label="文件链接" width="4000" />
             <ElTableColumn fixed="right" label="操作" width="80">
                 <template #default="scope">
-                    <span style="float: right; display: flex; flex-direction: column;">
+                    <span style="float: right; display: flex; flex-direction: column;" @click.stop>
                         <ElButton type="success" plain @click="copyItem(scope.$index)">复制</ElButton>
                         <ElButton type="success" plain @click="openItem(scope.$index)" style="margin-left: 0; margin-top: 5px;">打开</ElButton>
                         <!-- <ElButton type="success" plain @click="downItem(scope.$index)" style="margin-left: 0; margin-top: 5px;">下载</ElButton> -->
