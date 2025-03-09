@@ -1,12 +1,3 @@
-export function fileinfo(fullpath) {
-    if (fullpath.includes('\\')) fullpath = fullpath.replaceAll('\\', '/');
-    return {
-        fullpath: fullpath,
-        path: fullpath.substring(0, fullpath.lastIndexOf('/')),
-        name: fullpath.substring(fullpath.lastIndexOf('/') + 1),
-        ext: fullpath.substring((fullpath.lastIndexOf('.') + 1) || (fullpath.length)),
-    }
-}
 const prettyPrintFileSize = await (async function () {
     const isMac = /mac|iphone/i.test(navigator.userAgent);
     const userdec = null
@@ -15,7 +6,7 @@ const prettyPrintFileSize = await (async function () {
         ['Byte', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'] :
         ['Byte', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'],
         n = usedec ? 1000 : 1024, d = 9;
-    return function prettyPrintFileSize(size) {
+    return function prettyPrintFileSize(size, extra = true, cutoff_small_part = -1) {
         if (isNaN(size)) return size;
         size = +size;
         let newSize = size, unit = units[0];
@@ -26,7 +17,20 @@ const prettyPrintFileSize = await (async function () {
             newSize = _val;
             unit = units[i + 1];
         }
-        return newSize + ' ' + unit + (unit !== units[0] ? (` (${size} ${units[0]})`) : '');
+        if (cutoff_small_part >= 0) {
+            newSize = String(newSize);
+            if (newSize.indexOf('.') !== -1) {
+                let [int, dec] = newSize.split('.');
+                if (cutoff_small_part === 0) {
+                    newSize = int;
+                } else if (dec.length > cutoff_small_part) {
+                    newSize = int + '.' + dec.slice(0, cutoff_small_part);
+                }
+            }
+        }
+        return extra ?
+            (newSize + ' ' + unit + (unit !== units[0] ? (` (${size} ${units[0]})`) : '')) :
+            (newSize + ' ' + unit);
     }
 })();
 export { prettyPrintFileSize };

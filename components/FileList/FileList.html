@@ -1,4 +1,4 @@
-<div v-deep v-bind="$attrs" ref="my">
+<div v-deep v-bind="$attrs" ref="my" :class="{ 'rev-show': vcs_show_ }">
     <div class="top-view" v-deep>
         <div v-deep class="flexible-feature main-feature" @keydown.esc="downloadFolderDialogShows = filterDialogShows = false">
             <ElPopover :visible="downloadFolderDialogShows" placement="bottom" title="下载的内容中含有文件夹" width="220" @before-leave="$refs.dl.$el.focus()">
@@ -20,7 +20,7 @@
                 <Teleport to="body" :disabled="!filterDialogShows"><div v-deep class="cover" @click="filterDialogShows = false"></div></Teleport>            
             </ElPopover>
         </div>
-        <div v-deep class="flexible-feature main-feature" style="margin-top: 0.5em;" v-if="!showAll">
+        <div v-deep class="flexible-feature main-feature flexible-view align-center" style="margin-top: 0.5em;" v-if="!showAll">
             <ElPopover trigger="hover" placement="bottom" width="160" @before-leave="$refs.filter_btn.$el.focus()">
                 <template #reference><ElButton size="small">新建</ElButton></template>
                 <div style="display: flex;">
@@ -28,12 +28,15 @@
                     <ElButton size="small" style="flex: 1;" @click="operate('newdir')">文件夹</ElButton>
                 </div>
             </ElPopover>
-            <ElButton size="small" type="danger" plain @click="operate('delete')">删除</ElButton>
+            <ElButton size="small" v-if="!vcs_show" :type="vcs_enabled ? undefined : 'danger'" :plain="vcs_enabled ? false : true" @click="operate('delete')">删除</ElButton>
+            <ElButton size="small" type="danger" plain @click="operate('delete_version')" v-if="vcs_enabled && vcs_show">删除版本</ElButton>
             <ElButton size="small" @click="$emit('goPath')">
                 <ElIcon>
                     <RefreshLeft />
                 </ElIcon>
             </ElButton>
+            <ElButton size="small" @click="setvcs" v-if="vcs_status === 'unknown'">手动设置版本控制状态</ElButton>
+            <ElCheckbox v-if="vcs_enabled" style="margin-left: 1em;" v-model="vcs_show_">显示历史版本</ElCheckbox>
         </div>
         <ElSelect v-deep v-model="currentCommand" class="flexible-feature alternative-feature" @change="() => (operate(currentCommand), (currentCommand = '选择操作...'))">
             <ElOption value="选择操作...">选择操作</ElOption>
@@ -44,7 +47,10 @@
             <ElOption value="filter">筛选{{userFilter?'已启用':""}}</ElOption>
             <ElOption value="newfile">新建文件</ElOption>
             <ElOption value="newdir">新建文件夹</ElOption>
-            <ElOption value="delete">删除选中项</ElOption>
+            <ElOption value="delete" v-if="!vcs_show">删除选中项</ElOption>
+            <ElOption value="delete_version" v-if="vcs_enabled && vcs_show">删除版本</ElOption>
+            <ElOption value="setvcs" v-if="vcs_status === 'unknown'">设置版本控制状态</ElOption>
+            <ElOption value="togglevcs" v-if="vcs_enabled">{{ vcs_show ? '隐藏' : '显示' }}历史版本</ElOption>
             <ElOption value="refresh">刷新</ElOption>
         </ElSelect>
     </div>
@@ -55,12 +61,23 @@
             @row-click="$refs.table.toggleRowSelection($event)"
             @selection-change="onSelectionChange"
             @keydown="($event.key === 'Delete') && operate('delete')"
+            :tree-props="{ children: 'children', hasChildren: 'hasChildren' }" row-key="name" default-expand-all
+            lazy :load="loadChildren"
         >
             <ElTableColumn type="selection" width="40" />
             <ElTableColumn show-overflow-tooltip sortable prop="name" label="文件名" width="400">
                 <template #default="scope">
                     <template v-if="scope.row.dir">
                         <div v-deep class="is-item item-type-dir"><a href="javascript:" @click.prevent.stop="$emit('goPath', path + scope.row.name + '/')">{{scope.row.name}}</a></div>
+                    </template>
+                    <template v-else-if="scope.row.isDeleteMarker">
+                        <div v-deep class="is-item item-type-file item-type-delete-marker">{{scope.row.name}}</div>
+                    </template>
+                    <template v-else-if="0 && scope.row.latest">
+                        <div v-deep class="is-item item-type-file item-type-latest">{{scope.row.name}}</div>
+                    </template>
+                    <template v-else-if="scope.row.count">
+                        <div v-deep class="is-item item-type-file">{{scope.row.name}} ({{scope.row.count}})</div>
                     </template>
                     <template v-else>
                         <div v-deep class="is-item item-type-file">{{scope.row.name}}</div>
@@ -71,16 +88,20 @@
             <ElTableColumn show-overflow-tooltip sortable prop="time" label="修改时间" width="180" />
             <ElTableColumn show-overflow-tooltip sortable prop="type" label="文件类型" width="120" />
             <ElTableColumn show-overflow-tooltip sortable prop="class" label="存储类型" width="110" />
+            <ElTableColumn show-overflow-tooltip sortable prop="versionid" label="版本 ID" width="250" v-if="vcs_enabled" />
             <template #empty>
-                <span>没有文件</span>
+                <span>没有文件&nbsp;<a href="#" @click.prevent="operate('refresh')">刷新</a></span>
             </template>
         </ElTable>
     </div>
 
 <style v-deep>
 .is-item>>> {
-    display: flex;
+    display: inline-flex;
     align-items: center;
+}
+.rev-show .is-item>>> {
+    max-width: calc(100% - 36px);
 }
 .is-item>>>::before {
     content: "";
@@ -120,6 +141,25 @@ body > .cover>>> {
     .flexible-feature.alternative-feature>>> {
         display: revert !important;
     }
+}
+.flexible-view>>> {
+    display: flex;
+}
+.flexible-view.align-center>>> {
+    align-items: center;
+}
+.flexible-view.justify-center>>> {
+    justify-content: center;
+}
+.item-type-latest>>>::after {
+    content: " (最新)";
+    color: green;
+    margin-left: 0.5em;
+}
+.item-type-delete-marker>>>::after {
+    content: " (删除标记)";
+    color: red;
+    margin-left: 0.5em;
 }
 </style>
 </div>

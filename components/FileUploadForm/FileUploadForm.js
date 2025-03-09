@@ -304,13 +304,17 @@ const data = {
                     }
                 }
 
-                const result = await CoreUploadLogicV4.call(this, tasks);
-                this.isDone = true;
-                this.progress.done_total = result.total;
-                this.progress.done_success = result.success;
-                this.progress.done_failure = result.failure;
-                this.progress.timeCost = new Date().getTime() - this.progress.timeStart;
-                this.$emit('goPath'); // 刷新列表
+                if (tasks.length === 0) {
+                    ElMessage.error('请先选择文件');
+                } else {
+                    const result = await CoreUploadLogicV4.call(this, tasks);
+                    this.isDone = true;
+                    this.progress.done_total = result.total;
+                    this.progress.done_success = result.success;
+                    this.progress.done_failure = result.failure;
+                    this.progress.timeCost = new Date().getTime() - this.progress.timeStart;
+                    this.$emit('goPath'); // 刷新列表
+                }
             }
             catch (error) {
                 console.error('[upload]', 'unexpected:', error);

@@ -44,6 +44,7 @@ const data = {
             path: '/',
             vcs_enabled: false,
             vcs_status: null,
+            vcs_show: false,
             bucket_name_loader_PromiseObject: { a: null, b: null, c: null, d: null, e: 0, f: '' },
             active_panel: 'file',
             loadCopyRightFrame: false,
@@ -90,6 +91,7 @@ const data = {
                 this.path = '/';
                 this.vcs_enabled = false;
                 this.vcs_status = null;
+                this.vcs_show = false;
                 return;
             }
             if (!this.oss_name.startsWith('https://')) this.oss_name = 'https://' + this.oss_name;
@@ -129,9 +131,9 @@ const data = {
                 if (!this.bucket_name) {
                     ({ bucket: this.bucket_name, region: this.region_name } = await this.getBucketName(this.oss_name));
                 }
-                // if (!this.vcs_status) await this.GetVcsStatus();
+                if (!this.vcs_status || this.vcs_status === 'unknown') await this.GetVcsStatus();
                 const { exportContent } = await import('./filelistapi.js');
-                await exportContent(this.path, this.listdata, this);
+                await exportContent(this.path, this.listdata, this, { vcs: this.vcs_show });
             }
             catch (e) { err = e; }
             finally {
@@ -147,7 +149,8 @@ const data = {
             if (err) throw err;
         },
         async GetVcsStatus() {
-            while (1) {
+            while (0) {
+                // 不支持
                 const url = new URL('/?versioning', this.oss_name);
                 const date = new Date();
                 const myHead = {
@@ -169,6 +172,20 @@ const data = {
                 console.log(json);
                 break;
             }
+            const { exportContent } = await import('./filelistapi.js');
+            const data = [];
+            await exportContent(this.path, data, this, { vcs: true, setDelimiter: false });
+            // console.log(data);
+            for (const i of data) {
+                if (!i.VersionId) continue;
+                if (i.VersionId == null || i.VersionId == 'null' || i.VersionId == undefined || i.VersionId == '') {
+                    //可以确定是未开启版本控制
+                    return ((this.vcs_status = 'disabled'), (this.vcs_enabled = false));
+                }
+                // 已开启版本控制
+                return ((this.vcs_status = 'enabled'), (this.vcs_enabled = true));
+            }
+            return ((this.vcs_status = 'unknown'), ElMessage.info('Bucket 中无相关信息，版本控制状态未知。'));
         },
         async logonUser(isLogon = true) {
             if (!isLogon) {

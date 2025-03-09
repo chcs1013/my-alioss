@@ -145,7 +145,7 @@
             @goPath="goPath" @download="executeDownloadFn" @update:selection="fileSelection = $event"
             v-model:path="path"
             v-model:listdata="listdata"
-            v-model:vcs_enabled="vcs_enabled" v-model:vcs_status="vcs_status"
+            v-model:vcs_enabled="vcs_enabled" v-model:vcs_status="vcs_status" v-model:vcs_show="vcs_show"
             :username="username" :usersecret="usersecret" :oss_name="oss_name" :bucket="bucket_name" :region="region_name"
             ></FileList>
         <Suspense v-if="active_panel === 'upload'"><FileUploadForm v-deep class="my-panel" ref="file_upload"
