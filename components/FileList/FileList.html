@@ -60,7 +60,7 @@
             :default-sort="{ prop: 'name' }"
             @row-click="$refs.table.toggleRowSelection($event)"
             @selection-change="onSelectionChange"
-            @keydown="($event.key === 'Delete') && operate('delete')"
+            @keydown="($event.key === 'Delete') && operate((vcs_show ? 'delete_version' : 'delete'))"
             :tree-props="{ children: 'children', hasChildren: 'hasChildren' }" row-key="name" default-expand-all
             lazy :load="loadChildren"
         >
