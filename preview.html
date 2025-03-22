@@ -9,7 +9,8 @@
 </head>
 <body>
     <div id="ct">...</div>
-    <script>const l=location.href,u=new URL(new URL(l).hash.substring(1),l),x=u.searchParams;const r=atob(x.get('url')),t=x.get('type'),cp=x.get('ctype');const n=_=>0;switch(t){
+    <script>try{if(parent===self)throw 1;let a=parent.document.title;window.allow=true;}catch{document.write('Not allowed')}</script>
+    <script>if(!allow)throw'Not allowed';const l=location.href,u=new URL(new URL(l).hash.substring(1),l),x=u.searchParams;const r=atob(x.get('url')),t=x.get('type'),cp=x.get('ctype');const n=_=>0;switch(t){
 case'text':fetch(r).then(v=>v.text()).then(t=>{let p=document.createElement('pre');p.id='ct';ct.replaceWith(p);p.innerText=t}).catch(e=>ct.innerText=e);break
 case'image':{let p=document.createElement('img');p.id='ct';ct.replaceWith(p);p.src=r;p.onclick=_=>p.classList.toggle('d')}break
 case'audio':{let p=document.createElement('audio');p.id='ct';ct.replaceWith(p);p.controls=!0;p.src=r;p.play().catch(n)}break
