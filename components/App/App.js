@@ -526,8 +526,9 @@ const data = {
                 if (json.oss_name) this.oss_name = json.oss_name;
                 if (json.username) this.username = json.username;
                 if (json.usersecret) this.usersecret = json.usersecret;
-                if (json.bucket_name) this.bucket_name = json.bucket_name;
-                if (json.region_name) this.region_name = json.region_name;
+                // 不需要手动处理，因为user_endpoint2name会自动处理；手动处理会引入修改value之后数据不同步的bug
+                // if (json.bucket_name) this.bucket_name = json.bucket_name;
+                // if (json.region_name) this.region_name = json.region_name;
                 if (json.path) this.path = json.path;
                 if (json.oss_history) this.oss_history = json.oss_history;
                 if (json.remember_endpoint) this.logon_data.remember_endpoint = json.remember_endpoint;
