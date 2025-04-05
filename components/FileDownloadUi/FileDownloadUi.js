@@ -1,5 +1,6 @@
 import { getHTML } from '@/assets/js/browser_side-compiler.js';
 import { ElMessage, ElMessageBox, ElLoading } from 'element-plus';
+import { CircleClose } from 'icons-vue';
 import { sign_url } from '@/sign.js';
 
 
@@ -16,10 +17,13 @@ const data = {
             linktime_prefill: {
                 '1分钟': 60, '5分钟': 300, '10分钟': 600, '30分钟': 1800, '1小时': 3600, '6小时': 3600*6, '1天': 86400, '3天': 86400*3, '7天': 604800
             },
+            req_method: 'GET',
+            req_method_options: ['GET', 'POST', 'PUT', 'DELETE', 'HEAD', 'OPTIONS', 'PATCH'],
             linkstart: '1',
             linktime_start: null,
             loadingInstance: null,
             useBuiltinPreview: false,
+            custom_query: [],
         }
     },
 
@@ -34,7 +38,7 @@ const data = {
     emits: ['update:modelValue'],
 
     components: {
-
+        CircleClose,
     },
 
     computed: {
@@ -54,6 +58,7 @@ const data = {
                     expires: +this.linktime,
                     bucket: this.bucket,
                     region: this.region,
+                    method: this.req_method,
                 };
                 if (this.dltype === '1' && this.linkstart === '2' && this.linktime_start) {
                     // 签名URL的起始时间，为避免时钟误差，允许向后偏移15分钟
@@ -63,6 +68,9 @@ const data = {
                 const not_before = this.linktime_start.toLocaleString();
                 for (const i of this.files_to_download) {
                     const url = new URL((encodeURIComponent(i.name).replace(/\%2F/ig, '/')), this.oss_name);
+                    for (const i of this.custom_query) {
+                        url.searchParams.append(i[0], i[1]);
+                    }
                     if (this.dltype === '2') {
                         i.link = url.href;
                         i.type = '永久链接';
@@ -172,6 +180,18 @@ const data = {
             a.click();
             a.remove();
             URL.revokeObjectURL(url);
+        },
+        showCustomQueryTip() {
+            ElMessage.info('在链接中增加额外的 Query String, 可以用于分析等')
+        },
+        addCustomQuery() {
+            this.custom_query.push(['', '']);
+        },
+        removeCustomQuery(index) {
+            this.custom_query.splice(index, 1);
+        },
+        reset() {
+            this.hasInit = false;
         },
     },
 

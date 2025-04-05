@@ -24,6 +24,28 @@
             <ElInput type="number" v-model="linktime" :min="1" :max="604800" placeholder="在 1~604800 之间" />
         </label>
         <div v-if="dltype === '1'" style="margin-top: 5px;" v-deep><ElSegmented v-model="linktime_prefilled" :options="linktime_prefill_options" size="small" /></div>
+        <label v-deep class="form-item" v-if="dltype === '1'">
+            <span>请求方法:</span>
+            <ElSegmented v-model="req_method" :options="req_method_options" size="small" />
+        </label>
+        <div v-deep class="form-item" v-if="dltype === '1'" style="justify-content: space-between;">
+            <div>
+                <span>自定义查询参数</span>
+                <a href="javascript:" style="margin: 0 1em; margin-left: 0.5em;" @click="showCustomQueryTip" aria-label="Show help message of Custom Request Parameters">?</a>
+                <ElButton text size="small" @click="addCustomQuery">增加</ElButton>
+            </div>
+        </div>
+        <div v-deep class="form-item" v-if="dltype === '1'" style="flex-direction: column; align-items: initial;">
+            <template v-for="(item, index) in custom_query">
+                <div v-deep class="custom-query-item">
+                    <ElInput v-model="item[0]" required placeholder="name" style="flex: 1;" />
+                    <span class="split">=</span>
+                    <ElInput v-model="item[1]" required placeholder="value" style="flex: 2;" />
+                    <ElButton text @click="removeCustomQuery(index)" style="--el-button-text-color: #008000"><ElIcon style="scale: 1.5;"><CircleClose /></ElIcon></ElButton>
+                </div>
+            </template>
+        </div>
+        
         <label v-deep class="form-item" v-if="dltype === '1' && false">
                 <span>使用文件预览器以避免兼容性问题<sup>**</sup>:</span>
             <ElTooltip effect="dark" :content="'计费提示: 需获取对象信息，将按 GET 类请求计费，请按需使用\n\n功能提示: 如果需要使用第三方软件查看内容，请不要选择此项'" placement="top">
@@ -38,6 +60,7 @@
         <div style="margin-bottom: 1em;">
             <ElButton type="success" plain @click="copySelected">复制选中</ElButton>
             <ElButton type="success" plain @click="exportSelected">导出选中</ElButton>
+            <ElButton type="success" plain @click="reset">重新生成</ElButton>
         </div>
 
         <ElTable v-deep :data="files_to_download" border style="width:100%;flex:1;" ref="table"
@@ -83,6 +106,20 @@
         background: #f0f0f0;
         border-radius: 5px;
         border: 1px solid #aaa;
+    }
+    .custom-query-item>>> {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+    .custom-query-item>>> span.split {
+        margin: 0 0.5em;
+        font-size: x-large;
+    }
+    .custom-query-item+.custom-query-item>>> {
+        margin-top: 0.5em;
     }
     </style>
 </div>

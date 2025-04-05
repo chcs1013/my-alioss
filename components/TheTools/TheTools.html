@@ -1,8 +1,130 @@
-<div v-deep v-bind="$attrs">
+<div v-deep v-bind="$attrs" class="root">
     <h1 style="margin-top: 0; margin-bottom: 0.5em;">工具</h1>
     
+    <a href="javascript:" @click="page = 'sign_tool'">URL 签名工具</a>
+
+    <div v-if="page === 'sign_tool'" v-deep class="full">
+        <h1 style="margin-top: 0;">签名工具</h1>
+        <ElForm :model="sign_url_form" label-width="100px" class="sign-tool-form">
+            <ElFormItem label="方法">
+                <ElRadioGroup v-model="sign_url_form.method">
+                    <ElRadio :disabled="sign_url_form.is_entering_password" label="V4">V4</ElRadio>
+                    <ElRadio :disabled="sign_url_form.is_entering_password" label="V1">V1</ElRadio>
+                </ElRadioGroup>
+            </ElFormItem>
+            <ElFormItem label="URL">
+                <ElInput :disabled="sign_url_form.is_entering_password" v-model="sign_url_form.url" placeholder="请输入 URL"></ElInput>
+            </ElFormItem>
+            <ElFormItem label="Bucket">
+                <ElInput :disabled="sign_url_form.is_entering_password" v-model="sign_url_form.bucket" placeholder="请输入 Bucket"></ElInput>
+            </ElFormItem>
+            <ElFormItem label="Region" v-if="sign_url_form.method === 'V4'">
+                <ElInput :disabled="sign_url_form.is_entering_password" v-model="sign_url_form.region" placeholder="请输入 Region"></ElInput>
+            </ElFormItem>
+            <ElFormItem label="HTTP Method">
+                <ElInput :disabled="sign_url_form.is_entering_password" v-model="sign_url_form.http_method" placeholder="请输入 HTTP Method"></ElInput>
+            </ElFormItem>
+            <ElFormItem label="有效期" class="el-should-flex-child" v-deep>
+                <ElInput :disabled="sign_url_form.is_entering_password" style="flex: 1;" type="number" v-model="sign_url_form.expiry" :min="1" placeholder="请输入有效期"></ElInput>
+                <span style="margin-left: 0.5em;">秒</span>
+            </ElFormItem>
+            <ElFormItem label="请求头" class="el-should-flex-child" v-deep>
+                <div style="display: flex;">
+                    <span>其他请求头</span>
+                    <ElButton style="margin-left: 1em;" text size="small" @click="addCustomHeader">增加</ElButton>
+                </div>
+            </ElFormItem>
+            <div class="el-should-flex-child" v-deep style="padding-left: 100px;">
+                <template v-for="(item, index) in sign_url_form.custom_header">
+                    <div v-deep class="custom-header-item" style="display: flex; align-items: center; margin-bottom: 0.5em;">
+                        <ElInput v-model="item[0]" required placeholder="name" style="flex: 1;" />
+                        <span style="margin: 0 0.5em;">:</span>
+                        <ElInput v-model="item[1]" required placeholder="value" style="flex: 2;" />
+                        <ElButton text @click="removeCustomHeader(index)" style="--el-button-text-color: #008000"><ElIcon style="scale: 1.5;"><CircleClose /></ElIcon></ElButton>
+                    </div>
+                </template>
+            </div>
+            <ElFormItem label="AK">
+                <ElRadioGroup v-model="sign_url_form.ak">
+                    <ElRadio :disabled="sign_url_form.is_entering_password" label="默认" value="default">默认</ElRadio>
+                    <ElRadio :disabled="sign_url_form.is_entering_password" label="自定义" value="custom">自定义</ElRadio>
+                </ElRadioGroup>
+            </ElFormItem>
+            <ElFormItem label="凭据输入器" v-if="sign_url_form.ak === 'custom' && !sign_url_form.is_entering_password">
+                <span v-if="sign_url_form.username && sign_url_form.usersecret">凭据 {{ sign_url_form.username.substring(0, 6) + '…' }} 已安全输入! <a href="javascript:" @click="sign_url_form.username = sign_url_form.usersecret = ''">清除凭据</a></span>
+                <ElButton v-else @click="sign_openCreditInput">安全打开凭据输入器</ElButton>
+            </ElFormItem>
+            <ElFormItem label="输入凭据" class="el-should-flex-child is-secret" v-deep v-if="sign_url_form.ak === 'custom' && sign_url_form.is_entering_password" @keydown.enter="sign_checkCredit()" @keydown.esc="sign_url_form.is_entering_password = false">
+                <span style="margin-right: 0.5em; font-size: x-small;">Tab 切换焦点</span>
+                <ElInput ref="sign_username_input" @blur="sign_checkCredit" style="flex: 1;" placeholder="Access Key Id" v-model="sign_url_form.username" />
+                <span style="margin: 0 5px;">:</span>
+                <ElInput @blur="sign_checkCredit" style="flex: 1;" placeholder="Access Key Secret" v-model="sign_url_form.usersecret" type="password" />
+                <style>
+                * {
+                    pointer-events: none !important;
+                    background-color: #000 !important;
+                    color: #000 !important;
+                    -webkit-text-fill-color: #000 !important;
+                    border-color: #000 !important;
+                    box-shadow: none !important;
+                    user-select: none !important;
+                    cursor: none !important;
+                }
+                *:has(.is-secret>>>), .is-secret>>>, .is-secret>>> * {
+                    pointer-events: initial !important;
+                    user-select: auto !important;
+                }
+                .is-secret>>>, .is-secret>>> * {
+                    background-color: #fff !important;
+                    color: #000 !important;
+                    -webkit-text-fill-color: unset !important;
+                    border-color: initial !important;
+                }
+                .is-secret>>> input {
+                    border: 1px solid #7f7f7f !important;
+                    padding: 5px;
+                }
+                .custom-header-item>>> {
+                    display: flex;
+                    flex-direction: row;
+                    align-items: center;
+                    justify-content: center;
+                    overflow: hidden;
+                }
+                .custom-header-item>>> span.split {
+                    margin: 0 0.5em;
+                    font-size: x-large;
+                }
+                .custom-header-item+.custom-header-item>>> {
+                    margin-top: 0.5em;
+                }
+                </style>
+            </ElFormItem>
+            <ElFormItem>
+                <ElButton type="primary" @click="run_sign">签名 URL ({{sign_url_form.method}})</ElButton>
+            </ElFormItem>
+        </ElForm>
+    </div>
+
+    <div v-if="page === 'sign_done'" v-deep class="full">
+        <div>您的 URL:&nbsp;<a href="javascript:" @click="copySignedUrl">复制</a></div>
+        <a :href="signed_url" v-text="signed_url" style="white-space: normal; word-break: break-all;"></a>
+    </div>
 </div>
 
 <style>
-    
+.root>>> {
+    position: relative;
+}
+.full>>> {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background-color: #fff;
+    overflow: auto;
+    padding: 10px;
+}
+.el-should-flex-child>>> .el-form-item__content {
+    display: flex;
+}
 </style>

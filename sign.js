@@ -96,6 +96,8 @@ function hmacsha256(key, message) {
     return CryptoJS.HmacSHA256(message, key);
 }
 // https://help.aliyun.com/zh/oss/developer-reference/add-signatures-to-urls
+// 需要注意：调用者需要先对 URL 进行以下处理
+// (encodeURIComponent(url).replace(/\%2F/ig, '/'))
 export async function sign_url(user_url, {
     access_key_id, access_key_secret: secret,
     additionalHeadersList = {},
@@ -127,8 +129,8 @@ export async function sign_url(user_url, {
         url.searchParams.set('x-oss-additional-headers', xOssAdditionalHeaders);
     }
     // 处理 x-oss-credential
-    const 获取Region派生密钥的参数集 = `${date.substring(0, 8)}/${region}/oss/aliyun_v4_request`; // 摆烂了，这么多参数，文档里面命名乱的一批
-    const credential = `${access_key_id}/${获取Region派生密钥的参数集}`;
+    const derivedRegionKeyParams = `${date.substring(0, 8)}/${region}/oss/aliyun_v4_request`; // 获取Region派生密钥的参数集
+    const credential = `${access_key_id}/${derivedRegionKeyParams}`;
     url.searchParams.set('x-oss-credential', credential);
     // 处理 date
     url.searchParams.set('x-oss-date', date);
@@ -145,7 +147,7 @@ ${CanonicalHeaders.headers_additional}
 UNSIGNED-PAYLOAD`;
     const StringToSign = `OSS4-HMAC-SHA256
 ${date}
-${获取Region派生密钥的参数集}
+${derivedRegionKeyParams}
 ${CryptoJS.SHA256(CanonicalRequest).toString(CryptoJS.enc.Hex)}`;
     const SigningKey = hmacsha256(hmacsha256(hmacsha256(hmacsha256(CryptoJS.enc.Utf8.parse("aliyun_v4" + secret), date.substring(0, 8)), region), 'oss'), 'aliyun_v4_request');
     const signature = hmacsha256(SigningKey, StringToSign);
@@ -178,8 +180,8 @@ export async function sign_header(user_url, {
     if (!region) throw new TypeError('In V4 signature, `region` is required.'); // what a fucking!
     if (!date) throw new TypeError('In header signing, the `date` is required to complete your full request.');
     // 处理 x-oss-credential
-    const 获取Region派生密钥的参数集 = `${date.substring(0, 8)}/${region}/oss/aliyun_v4_request`; // 摆烂了，这么多参数，文档里面命名乱的一批
-    const credential = `${access_key_id}/${获取Region派生密钥的参数集}`;
+    const derivedRegionKeyParams = `${date.substring(0, 8)}/${region}/oss/aliyun_v4_request`; // 摆烂了，这么多参数，文档里面命名乱的一批
+    const credential = `${access_key_id}/${derivedRegionKeyParams}`;
     result += credential;
     // 处理 headers
     if (Reflect.ownKeys(additionalHeadersList).length) {
@@ -200,7 +202,7 @@ ${CanonicalHeaders.headers_additional}
 UNSIGNED-PAYLOAD`;
     const StringToSign = `OSS4-HMAC-SHA256
 ${date}
-${获取Region派生密钥的参数集}
+${derivedRegionKeyParams}
 ${CryptoJS.SHA256(CanonicalRequest).toString(CryptoJS.enc.Hex)}`;
     const SigningKey = hmacsha256(hmacsha256(hmacsha256(hmacsha256(CryptoJS.enc.Utf8.parse("aliyun_v4" + secret), date.substring(0, 8)), region), 'oss'), 'aliyun_v4_request');
     const signature = hmacsha256(SigningKey, StringToSign);
