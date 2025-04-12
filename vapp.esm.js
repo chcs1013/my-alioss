@@ -93,18 +93,30 @@ pg_statistics.MNT = new Date() - ST;// app mount
 
 // break long tasks
 await delay(10);
-updateLoadStat('Registering Service Worker');
-if ('serviceWorker' in navigator) {
+// updateLoadStat('Registering Service Worker');
+// if ('serviceWorker' in navigator) {
+//     try {
+//         const registration = await navigator.serviceWorker.register('./sw.js');
+//         console.info('[sw]', 'Service Worker registered successfully:', registration);
+//     } catch (error) {
+//         console.error('[sw]', 'Service Worker registration failed:', error);
+//     }
+// } else {
+//     console.warn('[sw]', 'Service Worker is not supported in this browser.');
+// }
+// pg_statistics.SWR = new Date() - ST;// Service Worker Registration
+if (globalThis.swAlive === true && 'serviceWorker' in navigator) {
     try {
-        const registration = await navigator.serviceWorker.register('./sw.js');
-        console.info('[sw]', 'Service Worker registered successfully:', registration);
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const registration of registrations) {
+            await registration.unregister();
+        }
+        console.info('[sw]', 'Service Worker unregistered successfully');
     } catch (error) {
-        console.error('[sw]', 'Service Worker registration failed:', error);
+        console.error('[sw]', 'Failed to unregister Service Worker:', error);
     }
-} else {
-    console.warn('[sw]', 'Service Worker is not supported in this browser.');
 }
-pg_statistics.SWR = new Date() - ST;// Service Worker Registration
+pg_statistics.SWU = new Date() - ST; // Service Worker unregistration duration
 
 // break long tasks
 await delay();
