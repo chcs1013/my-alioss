@@ -92,6 +92,21 @@ app.mount(myApp);
 pg_statistics.MNT = new Date() - ST;// app mount
 
 // break long tasks
+await delay(10);
+updateLoadStat('Registering Service Worker');
+if ('serviceWorker' in navigator) {
+    try {
+        const registration = await navigator.serviceWorker.register('./sw.js');
+        console.info('[sw]', 'Service Worker registered successfully:', registration);
+    } catch (error) {
+        console.error('[sw]', 'Service Worker registration failed:', error);
+    }
+} else {
+    console.warn('[sw]', 'Service Worker is not supported in this browser.');
+}
+pg_statistics.SWR = new Date() - ST;// Service Worker Registration
+
+// break long tasks
 await delay();
 updateLoadStat('Finishing');
 globalThis.FinishLoad?.call(globalThis);
