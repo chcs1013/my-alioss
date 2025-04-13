@@ -75,6 +75,7 @@ const PathNameStandard = {
     '"': '%22',
     '(': '%28',
     ')': '%29',
+    '*': '%2A',
 };
 function makePathNameStandard(pathname) {
     return pathname
