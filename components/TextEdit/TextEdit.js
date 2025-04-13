@@ -100,5 +100,5 @@ export default data;
 
 import { addCSS as LoadCSS } from '@/modules/util/BindMove.js';
 import { getVdeep } from '@/assets/js/browser_side-compiler.js';
-LoadCSS(`[${getVdeep(componentId)}]>span:empty::after{content:"(empty)";}`);
+LoadCSS(`[${getVdeep(componentId)}]>span:empty::after{content:"(empty)";}[${getVdeep(componentId)}]>span{white-space:pre}`);
 
