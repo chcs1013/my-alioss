@@ -28,7 +28,7 @@ export function xml2json(xml) {
 
                 // 处理文本节点
                 if (child.nodeType === 3) {
-                    return child.textContent.trim();
+                    return child.textContent;
                 }
 
                 // 处理元素节点
