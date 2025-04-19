@@ -51,33 +51,6 @@ class HTMLOssObjectPreviewForm extends HTMLElement {
                     });
                 };
 
-                // if (minorType === 'mp4') {
-                //     // 使用mp4box.js进行mp4播放
-                //     queueMicrotask(async () => {
-                //         this.#el.innerText = '正在加载 MP4 播放器...';
-                //         let m;
-                //         try {
-                //             if (!globalThis.MP4Box) await load_script('./modules/mp4box/mp4box.all.min.js');
-                //             m = await import('@/components/mp4util/play_mp4.js');
-                //         } catch (e) {
-                //             this.#el.innerText = '无法加载 MP4 播放器。 ' + e;
-                //             return;
-                //         }
-                //
-                //         // 加载视频
-                //         const { createMediaSourceFromDynamicURL } = m;
-                //         const video = document.createElement(majorType);
-                //         video.id = 'app';
-                //         this.#el.replaceWith(video);
-                //         video.controls = true;
-                //         this._props = await createMediaSourceFromDynamicURL(getossUrl);
-                //         video.src = this._props.url;
-                //         apply_volume(video);
-                //         video.play().catch(() => { });
-                //     });
-                //     break;
-                // }
-
                 const p = document.createElement(majorType);
                 p.id = 'app';
                 this.#el.replaceWith(p);
@@ -119,6 +92,7 @@ class HTMLOssObjectPreviewForm extends HTMLElement {
             
                 default: {
                     this.#el.innerText = '';
+                    this.#el.classList.add('text');
                     const a = document.createElement('a');
                     a.href = ossUrl;
                     a.target = '_blank';
@@ -191,6 +165,10 @@ img#app.scale {
 video#app, object#app {
     width: 100%;
     height: 100%;
+}
+
+audio#app {
+    margin: auto;
 }
 `);
 
