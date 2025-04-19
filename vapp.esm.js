@@ -22,7 +22,7 @@ await new Promise(resolve => setTimeout(resolve));
 
 import { addCSS, registerResizableWidget, zIndexManager } from './modules/util/BindMove.js';
 registerResizableWidget();
-zIndexManager.config(20001, 20005);
+zIndexManager.config(20001, 20999);
 
 // break long tasks
 await delay();
