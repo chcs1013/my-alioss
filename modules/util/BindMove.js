@@ -378,7 +378,7 @@ export class HTMLResizableWidgetElement extends HTMLElement {
 
     attributeChangedCallback(name, oldValue, newValue) {
         if (name === 'z-index-management-prohibited') {
-            this.#processZIndexManagement();
+            this.#processZIndexManagement(oldValue == null);
         }
     }
 
@@ -398,11 +398,12 @@ export class HTMLResizableWidgetElement extends HTMLElement {
         return true;
     }
 
-    #processZIndexManagement() {
+    #processZIndexManagement(previousManaged = null) {
         if (!this.zIndexManagementProhibited && this.isConnected) {
             zIndexManager.add(this);
         } else {
             zIndexManager.remove(this);
+            if (previousManaged) this.style.zIndex = '';
         }
         zIndexManager.update();
     }

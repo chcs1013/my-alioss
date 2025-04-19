@@ -303,7 +303,7 @@ const data = {
                     if (!globalThis.appInstance_.PreviewHelper) return ElMessage.error('预览组件尚未完成加载，请稍等片刻...');
 
                     const vel = document.createElement('x-virtual-placeholder');
-                    const el = CreateDynamicResizableView(vel, '预览: ' + selection[0].name, 1280, 720);
+                    const el = CreateDynamicResizableView(vel, '预览: ' + selection[0].name, 1300, 740);
                     vel.innerText = '正在加载，请稍候...';
                     
                     try {
@@ -336,16 +336,14 @@ const data = {
 
                             const ctls = document.createElement('div');
                             ctls.className = 'x-oss-video-preview-v2-video-ctls';
-                            ctls.setAttribute('style', 'position: absolute; top: 0; left: 0; width: calc(100% - 40px); display: flex; align-items: center; overflow: hidden; margin: 10px; padding: 10px; background: rgba(0,0,0,0.5); color: white; pointer-events: none; border-radius: 5px 5px 0 0;')
                             const title = document.createElement('span');
+                            title.className = 'x-title';
                             title.append(document.createTextNode(selection[0].name));
-                            title.setAttribute('style','flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 0.5em;');
                             const close = document.createElement('button');
                             close.className = 'el-button';
-                            close.setAttribute('style', 'pointer-events: all;');
                             close.append(document.createTextNode('x'));
                             ctls.append(title, close);
-                            el.append(ctls);
+                            el.prepend(ctls);
 
                             // 添加消息处理程序
                             let intervalId;
@@ -362,12 +360,12 @@ const data = {
                                 lastMouseMoveTime = Date.now();
                             };
                             const hideControls = () => {
-                                if (Date.now() - lastMouseMoveTime >= 3000) {
+                                if (Date.now() - lastMouseMoveTime >= 1900 && ctls.classList.contains('active')) {
                                     ctls.classList.remove('active');
                                 }
                             };
                             frame.addEventListener('pointermove', showControls);
-                            intervalId = setInterval(hideControls, 1000);
+                            intervalId = setInterval(hideControls, 500);
                             showControls();
                         }
                     } catch (e) {
