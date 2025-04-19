@@ -553,7 +553,7 @@ const data = {
         async copy_object(target, source, source_bucket, signal, override = true, s_class = null) {
             const url = new URL((encodeURIComponent(target).replace(/\%2F/ig, '/')), this.oss_name);
             const headers = {};
-            Reflect.set(headers, 'x-oss-copy-source', encodeURI(`/${source_bucket}/${source}`));
+            Reflect.set(headers, 'x-oss-copy-source', encodeURI(`/${source_bucket}/${source}`).replace(/\+/g, '%2B'));
             if (!override) Reflect.set(headers, 'x-oss-forbid-overwrite', 'true');
             if (s_class) Reflect.set(headers, 'x-oss-storage-class', s_class);
             const signed = await sign_url(url, {

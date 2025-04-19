@@ -79,7 +79,7 @@ const PathNameStandard = {
 };
 function makePathNameStandard(pathname) {
     return pathname
-        .replace(/[\!\'\"\(\)]/g, substring => PathNameStandard[substring]);
+        .replace(/[\!\'\"\(\)\*]/g, substring => PathNameStandard[substring]);
 }
 function getCanonicalQueryString(url = new URL()) {
     // 获取 URL 的 searchParams
