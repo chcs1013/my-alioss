@@ -19,8 +19,8 @@
                 <div style="margin-top: 0.5em;" v-if="userFilter"><a href="javascript:" @click.prevent="() => ((userFilter = ''), (filterDialogShows = false))">清除筛选</a></div>
                 <Teleport to="body" :disabled="!filterDialogShows"><div v-deep class="cover" @click="filterDialogShows = false"></div></Teleport>            
             </ElPopover>
-            <!-- <ElButton size="small" @click="operate('copy')">复制</ElButton> -->
-            <!-- <ElButton size="small" @click="operate('paste')">粘贴</ElButton> -->
+            <ElButton size="small" @click="operate('copy')" :disabled="copy_in_progress">{{copy_in_progress?'正在':''}}复制</ElButton>
+            <ElButton size="small" @click="operate('paste')">粘贴</ElButton>
         </div>
         <div v-deep class="flexible-feature main-feature flexible-view align-center" style="margin-top: 0.5em;" v-if="!showAll">
             <ElPopover trigger="hover" placement="bottom" width="160" @before-leave="$refs.filter_btn.$el.focus()">
@@ -63,8 +63,8 @@
             <ElOption value="newfile">新建文件</ElOption>
             <ElOption value="newdir">新建文件夹</ElOption>
             <ElOption value="setvcs" v-if="vcs_status === 'unknown'">设置版本控制状态</ElOption>
-            <!-- <ElOption value="copy">复制</ElOption> -->
-            <!-- <ElOption value="paste">粘贴</ElOption> -->
+            <ElOption value="copy" :disabled="copy_in_progress">{{copy_in_progress?'正在':''}}复制</ElOption>
+            <ElOption value="paste">粘贴</ElOption>
             <ElOption value="togglevcs" v-if="vcs_enabled">{{ vcs_show ? '隐藏' : '显示' }}历史版本</ElOption>
             <!-- <ElOption value="chstoragetype">更改存储类型</ElOption> -->
             <ElOption value="refresh">刷新</ElOption>

@@ -6,6 +6,7 @@ import { defineAsyncComponent } from 'vue';
 import { uploadFile } from '../upload-core/upload.js';
 import { prettyPrintFileSize } from '@/assets/js/fileinfo.js';
 import { xml2json } from '../xml2json/xml2json.js';
+import { encrypt_data, decrypt_data } from '@/modules/util/aesutil.js';
 const ExplorerNavBar = defineAsyncComponent(() => import('../FileExplorer/ExplorerNavBar.js'));
 
 
@@ -24,6 +25,7 @@ const data = {
             userFilter: '',
             filterDialogShows: false,
             changeStorageTypeDialogShows: false,
+            copy_in_progress: false,
         }
     },
 
@@ -136,38 +138,42 @@ const data = {
                 return;
             }
         }, 
+        async export_file_list_from_selection(vcs = false) {
+            const selection_raw = this.$refs.table.getSelectionRows();
+            const selection = new Array();
+            const { exportContent } = await import('../App/filelistapi.js');
+            for (const i of selection_raw) try {
+                if (i.hasChildren) continue;
+                if (i.dir) {
+                    // 获取目录里**所有**内容
+                    const tempArr = [];
+                    await exportContent(i.fullKey, tempArr, Object.assign(Object.create(this), {
+                        bucket_name: this.bucket, region_name: this.region,
+                    }), { setDelimiter: false, vcs: (vcs) });
+                    if (vcs) selection.push.apply(selection, tempArr.map(v => ({ Key: v.Key, VersionId: v.VersionId })));
+                    else selection.push.apply(selection, tempArr.map(v => v.Key));
+                }
+                else if (vcs) selection.push({ Key: i.fullKey, VersionId: i.versionid });
+                else selection.push(i.fullKey);
+            } catch (error) {
+                throw ElMessageBox.alert('网络请求异常，请重试。' + error, '错误', { type: 'error', confirmButtonText: '好' });
+            }
+            return selection;
+        },
         async operate(type) {
             switch (type) {
-                case 'delete': case 'delete_version': {
+                case 'delete': case 'delete_version': try {
                     let errorCount = 0;
                     
                     const deleted = new Set();
                     ElMessage.success('正在处理您的请求。这可能需要一些时间。');
-                    const selection_raw = this.$refs.table.getSelectionRows();
-                    const selection = new Array();
-                    const path = this.path;
-                    const { exportContent } = await import('../App/filelistapi.js');
-                    for (const i of selection_raw) try {
-                        if (i.hasChildren) continue;
-                        if (i.dir) {
-                            // 获取目录里**所有**内容
-                            const tempArr = [];
-                            await exportContent(i.fullKey, tempArr, Object.assign(Object.create(this), {
-                                bucket_name: this.bucket, region_name: this.region,
-                            }), { setDelimiter: false, vcs: (type === 'delete_version') });
-                            if (type === 'delete_version') selection.push.apply(selection, tempArr.map(v => ({ Key: v.Key, VersionId: v.VersionId })));
-                            else selection.push.apply(selection, tempArr.map(v => v.Key));
-                        }
-                        else if (type === 'delete_version') selection.push({ Key: i.fullKey, VersionId: i.versionid });
-                        else selection.push(i.fullKey);
-                    } catch (error) {
-                        return ElMessageBox.alert('网络请求异常，请重试。' + error, '错误', { type: 'error', confirmButtonText: '好' });
-                        }
+                    const selection = await this.export_file_list_from_selection(type === 'delete_version');
                     if (selection.length === 0) return ElMessage.error('没有选择任何文件或版本');
-                    try { await ElMessageBox.confirm(
-                        this.vcs_enabled ? (type === 'delete_version' ? `即将彻底删除 ${selection.length} 个版本。删除后将无法恢复这些版本。确认继续？` :
-                            `要添加 ${selection.length} 文件的删除标记？`) : `版本控制未启用，即将彻底删除 ${selection.length} 文件。确认继续？`,
-                        '删除', { type: 'warning', confirmButtonText: '删除', cancelButtonText: '不删除' })
+                    try {
+                        await ElMessageBox.confirm(
+                            this.vcs_enabled ? (type === 'delete_version' ? `即将彻底删除 ${selection.length} 个版本。删除后将无法恢复这些版本。确认继续？` :
+                                `要添加 ${selection.length} 文件的删除标记？`) : `版本控制未启用，即将彻底删除 ${selection.length} 文件。确认继续？`,
+                            '删除', { type: 'warning', confirmButtonText: '删除', cancelButtonText: '不删除' })
                     } catch { return }
                     this.loadingInstance = ElLoading.service({ lock: false, fullscreen: false, target: this.$refs.my });
                     
@@ -205,7 +211,7 @@ const data = {
                             deleted.add(i.Key || i.Prefix);
                         }
                         else if (json.Deleted) deleted.add(json.Deleted.Key);
-                        errorCount += (chunk.length - deleted.length); 
+                        errorCount += (chunk.length - deleted.length);
                     } catch (error) {
                         ElMessageBox.alert('网络请求异常，请重试。' + error, '错误', { type: 'error', confirmButtonText: '好' });
                     }
@@ -214,6 +220,9 @@ const data = {
                     else ElMessage.success('删除成功');
                     this.loadingInstance.close();
                     this.loadingInstance = null;
+                    break;
+                } catch (e) {
+                    ElMessage.error(e);
                     break;
                 }
                 
@@ -328,7 +337,6 @@ const data = {
                         if ((head.headers.get('Content-Type') || '').startsWith('video/')) {
                             el.querySelector('widget-caption').remove();
                             const form = el.querySelector('oss-object-preview-form');
-                            const shadow = form.shadowRoot;
 
                             // 自定义控件
                             const { BindMove } = await import('@/modules/util/BindMove.js');
@@ -392,6 +400,46 @@ const data = {
                 
                 case 'chstoragetype':
                     this.changeStorageTypeDialogShows = true;
+                    break;
+                
+                case 'copy':
+                    try {
+                        const arr = await this.export_file_list_from_selection();
+                        if (!arr.length) return ElMessage.error('没有选中文件');
+                        this.copy_in_progress = true;
+                        await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame);
+                        const text = JSON.stringify({
+                            bucket: this.bucket,
+                            region: this.region,
+                            endpoint: this.oss_name,
+                            action: 'copy',
+                            objects: arr,
+                            path: this.path,
+                        });
+                        const rand_bytes = new Uint8Array(64);
+                        crypto.getRandomValues(rand_bytes);
+                        const password = CryptoJS.enc.Hex.stringify(CryptoJS.lib.WordArray.create(rand_bytes));
+                        await navigator.clipboard.writeText(JSON.stringify({
+                            data: encrypt_data(text, password),
+                            app: 'my-alioss',
+                            uuid: 'e8d9fcfc-b3ee-4e38-903a-d540b860b738',
+                            version: 2025042001,
+                            password
+                        }));
+                        ElMessage.success('已复制');
+                    } catch (e) {
+                        ElMessage.error('复制失败: ' + e)
+                    } finally {
+                        this.copy_in_progress = false;
+                    }
+                    break;
+                
+                case 'paste':
+                    try {
+                        await this.do_paste(await navigator.clipboard.readText());
+                    } catch (e) {
+                        ElMessage.error('无法粘贴: ' + e);
+                    }
                     break;
 
                 default:
@@ -457,26 +505,8 @@ const data = {
 
             if (this.vcs_show) return ElMessage.error('不支持VCS');
 
-            const deleted = new Set();
             ElMessage.success('正在处理您的请求。这可能需要一些时间。');
-            const selection_raw = this.$refs.table.getSelectionRows();
-            const selection = new Array();
-            const path = this.path;
-            const { exportContent } = await import('../App/filelistapi.js');
-            for (const i of selection_raw) try {
-                if (i.hasChildren) continue;
-                if (i.dir) {
-                    // 获取目录里**所有**内容
-                    const tempArr = [];
-                    await exportContent(i.fullKey, tempArr, Object.assign(Object.create(this), {
-                        bucket_name: this.bucket, region_name: this.region,
-                    }), { setDelimiter: false });
-                    selection.push.apply(selection, tempArr.map(v => v.Key));
-                }
-                else selection.push(i.fullKey);
-            } catch (error) {
-                return ElMessageBox.alert('网络请求异常，请重试。' + error, '错误', { type: 'error', confirmButtonText: '好' });
-            }
+            const selection = await this.export_file_list_from_selection();
             if (selection.length === 0) return ElMessage.error('没有选择任何文件或版本');
             try {
                 await ElMessageBox.confirm(
@@ -501,6 +531,134 @@ const data = {
             this.loadingInstance = null;
             this.$emit('goPath')
         },
+        handle_paste_event(ev) {
+            const active = document.activeElement;
+            if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)) {
+                return;
+            }
+            ev.preventDefault();
+
+            const data = (ev.clipboardData || window.clipboardData).getData("text");
+            queueMicrotask(() => this.do_paste(data).catch((e) => ElMessage.error('无法粘贴: ' + e)));
+        },
+        async copy_object(target, source, source_bucket, signal, override = true) {
+            const url = new URL((encodeURIComponent(target).replace(/\%2F/ig, '/')), this.oss_name);
+            const headers = {};
+            Reflect.set(headers, 'x-oss-copy-source', encodeURI(`/${source_bucket}/${source}`));
+            if (!override) Reflect.set(headers, 'x-oss-forbid-overwrite', 'true');
+            const signed = await sign_url(url, {
+                access_key_id: this.username,
+                access_key_secret: this.usersecret,
+                expires: 600,
+                bucket: this.bucket,
+                region: this.region,
+                method: 'PUT',
+                additionalHeadersList: headers
+            });
+            const resp = await fetch(signed, {
+                method: 'PUT',
+                signal,
+                headers,
+            });
+            if (!resp.ok) throw await resp.text();
+            return (await resp.text()) || true;
+        },
+        async do_paste(clipdata) {
+            if (clipdata[0] !== '{') throw '剪贴板中不是使用本程序复制的数据';
+            const json = JSON.parse(clipdata);
+            if (!json || json.app !== 'my-alioss' || json.uuid !== 'e8d9fcfc-b3ee-4e38-903a-d540b860b738') throw '剪贴板中不是使用本程序复制的数据';
+            if (json.version > 2025042001) throw '应用程序版本不兼容，请使用相同版本重新复制';
+            if (json.version < 2025042001) throw '暂时不支持此操作，请使用相同版本重新复制';
+            const obj = JSON.parse(decrypt_data(json.data, json.password));
+            if (obj.action !== 'copy') throw '数据目的不正确';
+            if (obj.region !== this.region) throw '不允许跨区域复制';
+
+            const allow_override = await new Promise((r, j) => {
+                ElMessageBox.confirm('如果遇到重复文件，是否允许直接覆盖？', '粘贴文件', {
+                    type: 'warning',
+                    confirmButtonText: '直接覆盖',
+                    cancelButtonText: '不可以覆盖',
+                    distinguishCancelAndClose: true,
+                }).then(() => r(true)).catch((e) => (e === 'close') ? j('取消操作') : r(false));
+            });
+
+            const div = document.createElement('div');
+            const el = CreateDynamicResizableView(div, '文件复制进行中', 360, 240);
+            el.style.overflow = 'hidden';
+            div.style.overflow = 'hidden';
+            div.style.display = 'flex';
+            div.style.flexDirection = 'column';
+            div.style.width = div.style.height = '100%';
+            div.style.boxSizing = 'border-box';
+            el.querySelector('button').remove();
+
+            const { innerWidth, innerHeight } = window;
+            const { offsetWidth, offsetHeight } = el;
+            el.style.left = `${(innerWidth - offsetWidth) / 2}px`;
+            el.style.top = `${(innerHeight - offsetHeight) / 2}px`;
+
+            try {
+                const _1 = document.createElement('div');
+                _1.setAttribute('style', 'text-align:center;margin-bottom:0.5em;font-size:large;font-weight:bold;');
+                _1.append('正在复制 ' + obj.objects.length + ' 个文件');
+                div.append(_1);
+                const btn = document.createElement('button');
+                btn.className = 'el-button';
+                btn.append('取消');
+                let Cancelled = false, signal = null;
+                btn.onclick = () => {
+                    Cancelled = true;
+                    el.remove();
+                    signal.abort();
+                }
+
+                const current = document.createElement('div');
+                current.style.wordBreak = 'break-all';
+                current.style.whiteSpace = 'normal';
+                current.style.marginBottom = '0.5em';
+                current.style.overflow = 'auto';
+                current.style.flex = '1';
+                div.append(current, btn);
+
+                let success = 0, count = 0, failures = [];
+                for (const i of obj.objects) {
+                    if (Cancelled) throw '用户已取消';
+                    ++count;
+                    if (i.endsWith('/')) continue;
+                    signal = new AbortController();
+                    current.innerText = '';
+                    const _2 = document.createElement('div');
+                    _2.setAttribute('style', 'margin-top: 0.5em;');
+                    _2.append(`正在复制: ${i}\n`);
+                    current.append(`当前进度 ${count}/${obj.objects.length} (${Math.floor(count * 1e6 / obj.objects.length) / 1e4}%)`, _2);
+                    const relative_path = i.substring(obj.path.length - 1);
+                    try {
+                        if (await this.copy_object(this.path + relative_path, i, obj.bucket, signal.signal, allow_override)) ++success;
+                    } catch (error) {
+                        failures.push(`${i} 复制失败: ${error}`);
+                    }
+                }
+                if (Cancelled) throw '用户已取消';
+                
+                current.innerText = `复制完成，共处理 ${count} 个 Object，${success} 成功，${count - success} 失败。${failures.length ? '\n\n失败详情: \n' : ''}${failures.join('\n')}`;
+                btn.innerText = ('完成');
+                btn.onclick = () => el.remove();
+                this.$emit('goPath');
+            } catch (e) {
+                if (typeof e !== 'string') console.error('[copy]', e);
+                el.remove();
+                throw e;
+            }
+        },
+    },
+
+    mounted() {
+        window.addEventListener('paste', this.handle_paste_event);
+    },
+
+    unmounted() {
+        window.removeEventListener('paste', this.handle_paste_event);
+        
     },
 
     template: await getHTML(import.meta.url, componentId),
