@@ -264,26 +264,33 @@ const data = {
                     const selection = this.$refs.table.getSelectionRows();
                     if (selection.length != 1) return ElMessage.error('此操作只能选择一个文件');
                     if (selection[0].dir) return ElMessage.error('此操作只能应用于文件');
-                    const url = new URL((encodeURIComponent(selection[0].fullKey).replace(/\%2F/ig, '/')), this.oss_name);
-                    const signed_url = await sign_url(url, {
-                        access_key_id: this.username,
-                        access_key_secret: this.usersecret,
-                        expires: 10,
-                        bucket: this.bucket,
-                        region: this.region,
-                        method: 'HEAD',
-                    });
-                    const head = await fetch(signed_url, {
-                        method: 'HEAD'
-                    });
-                    const div = document.createElement('div');
-                    div.style.whiteSpace = 'pre';
-                    let str = '';
-                    head.headers.forEach((value, key) => {
-                        str += `${key}: ${value}\n`;
-                    });
-                    div.innerText = str;
-                    CreateDynamicResizableView(div, '文件元数据: ' + selection[0].name, 720, 300);
+                    const vel = document.createElement('x-virtual-placeholder');
+                    const el = CreateDynamicResizableView(vel, '文件元数据: ' + selection[0].name, 720, 300);
+                    vel.innerText = '正在加载，请稍候...';
+                    try {
+                        const url = new URL((encodeURIComponent(selection[0].fullKey).replace(/\%2F/ig, '/')), this.oss_name);
+                        const signed_url = await sign_url(url, {
+                            access_key_id: this.username,
+                            access_key_secret: this.usersecret,
+                            expires: 10,
+                            bucket: this.bucket,
+                            region: this.region,
+                            method: 'HEAD',
+                        });
+                        const head = await fetch(signed_url, {
+                            method: 'HEAD'
+                        });
+                        const div = document.createElement('div');
+                        div.style.whiteSpace = 'pre';
+                        let str = '';
+                        head.headers.forEach((value, key) => {
+                            str += `${key}: ${value}\n`;
+                        });
+                        div.innerText = str;
+                        vel.replaceWith(div);
+                    } catch (e) {
+                        vel.innerText = `加载失败惹... ${e}`;
+                    }
                     break;
                 }
                     
@@ -292,26 +299,32 @@ const data = {
                     const selection = this.$refs.table.getSelectionRows();
                     if (selection.length != 1) return ElMessage.error('此操作只能选择一个文件');
                     if (selection[0].dir) return ElMessage.error('此操作只能应用于文件');
-                    const url = new URL((encodeURIComponent(selection[0].fullKey).replace(/\%2F/ig, '/')), this.oss_name);
-                    const sign_params = { access_key_id: this.username, access_key_secret: this.usersecret, expires: 3600, bucket: this.bucket, region: this.region };
-                    const signed_url = await sign_url(url, sign_params);
-                    const head = await fetch(await sign_url(url, { method: 'HEAD', ...sign_params }), { method: 'HEAD' });
-                    const previewLink = new URL('./preview.html', location.href);
-                    const meta = new URL('/', previewLink);
-                    const ctype = head.headers.get('content-type').split('/');
-                    meta.searchParams.set('type', ctype[0]);
-                    meta.searchParams.set('ctype', ctype.join('/'));
-                    meta.searchParams.set('url', btoa(signed_url));
-                    previewLink.hash = '#/' + meta.search;
-                    const frame = document.createElement('iframe');
-                    if ('allow' in HTMLIFrameElement.prototype) frame.allow = 'autoplay *; fullscreen *';
-                    else frame.allowFullscreen = true; // for compiability
-                    // to preview PDFs, sandbox is not allowed to be set
-                    // frame.sandbox = 'allow-forms allow-scripts allow-modals allow-downloads allow-orientation-lock';
-                    frame.src = previewLink.href;
-                    frame.setAttribute('style', 'width: 100%; height: 100%; overflow: hidden; border: 0; box-sizing: border-box; display: flex; flex-direction: column;');
-                    const el = CreateDynamicResizableView(frame, '预览: ' + selection[0].name, 1280, 720);
-                    el.setAttribute('style', '--padding: 0;' + (el.getAttribute('style') || ''));
+                    if (!globalThis.appInstance_.PreviewHelper) return ElMessage.error('预览组件尚未完成加载，请稍等片刻...');
+
+                    const vel = document.createElement('x-virtual-placeholder');
+                    const el = CreateDynamicResizableView(vel, '预览: ' + selection[0].name, 1280, 720);
+                    vel.innerText = '正在加载，请稍候...';
+                    
+                    try {
+                        const url = new URL((encodeURIComponent(selection[0].fullKey).replace(/\%2F/ig, '/')), this.oss_name);
+                        const sign_params = { access_key_id: this.username, access_key_secret: this.usersecret, expires: 600, bucket: this.bucket, region: this.region };
+                        const head = await fetch(await sign_url(url, { method: 'HEAD', ...sign_params }), { method: 'HEAD' });
+
+                        // 确认el是否还在DOM中，如果用户已经关闭弹出窗口则不进行后续请求
+                        if (!el.isConnected) break;
+
+                        const frame = document.createElement('oss-object-preview-form');
+                        vel.replaceWith(frame);
+                        el.setAttribute('style', '--padding: 0;' + (el.getAttribute('style') || ''));
+
+                        await frame.init(async (time = 0) => {
+                            if (time === 0) sign_params.expires = 600;
+                            else sign_params.expires = time;
+                            return await sign_url(url, sign_params);
+                        }, head.headers.get('Content-Type') || 'application/octet-stream', selection[0].name);
+                    } catch (e) {
+                        vel.innerText = `加载失败惹... ${e}`;
+                    }
                     break;
                 }
                     

@@ -20,7 +20,7 @@ export function delay(timeout = 0) {
 updateLoadStat('Waiting');
 await new Promise(resolve => setTimeout(resolve));
 
-import { registerResizableWidget } from './modules/util/BindMove.js';
+import { addCSS, registerResizableWidget } from './modules/util/BindMove.js';
 registerResizableWidget();
 
 // break long tasks
@@ -229,6 +229,15 @@ queueMicrotask(() => {
 });
 
 
+addCSS(`resizable-widget{z-index:20001}`);
+
+
+
+import('@/assets/js/preview-helper.js').then(module => globalThis.appInstance_.PreviewHelper = module);
+
+
+
+// CODE END
 
 // 预加载子组件，提升用户体验
 setTimeout(() => {
@@ -243,13 +252,3 @@ setTimeout(() => {
         console.warn('[preload]', 'Failed to prefetch module:', i, error);
     });
 });
-
-
-
-
-
-
-
-
-
-
