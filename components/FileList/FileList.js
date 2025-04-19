@@ -361,7 +361,7 @@ const data = {
                                 lastMouseMoveTime = Date.now();
                             };
                             const hideControls = () => {
-                                if (Date.now() - lastMouseMoveTime >= 5000) {
+                                if (Date.now() - lastMouseMoveTime >= 3000) {
                                     ctls.classList.remove('active');
                                 }
                             };
