@@ -25,7 +25,15 @@ const data = {
             userFilter: '',
             filterDialogShows: false,
             changeStorageTypeDialogShows: false,
+            bulkSelectDialogShows: false,
             copy_in_progress: false,
+            storage_classes: {
+                "Standard": "标准存储",
+                "IA": "低频访问",
+                "Archive": "归档存储",
+                "ColdArchive": "冷归档存储",
+                "DeepColdArchive": "深度冷归档存储"
+            },
         }
     },
 
@@ -402,6 +410,10 @@ const data = {
                     this.changeStorageTypeDialogShows = true;
                     break;
                 
+                case 'bulkSelectDialogShows':
+                    this.bulkSelectDialogShows = true;
+                    break;
+                
                 case 'copy':
                     try {
                         const arr = await this.export_file_list_from_selection();
@@ -426,7 +438,7 @@ const data = {
                             version: 2025042001,
                             password
                         }));
-                        ElMessage.success('已复制');
+                        ElMessage.success(`已复制 ${arr.length} 个 Object`);
                     } catch (e) {
                         ElMessage.error('复制失败: ' + e)
                     } finally {
@@ -513,17 +525,14 @@ const data = {
                     `即将修改 ${selection.length} 文件的存储类型为 ${act}。请注意可能的数据解冻/转移费用。确认继续？`,
                     '更改文件存储类型', { type: 'warning', confirmButtonText: act, cancelButtonText: '保持原样' })
             } catch { return }
-            return ElMessage.error('暂未实现');
 
             this.loadingInstance = ElLoading.service({ lock: false, fullscreen: false, target: this.$refs.my });
 
-            const SIZE = 1;
-            for (let i = 0; i < selection.length; i += SIZE) try {
-                const chunk = selection.slice(i, i + SIZE);
-                const url = new URL('/?delete', this.oss_name);
-                //......
+            for (const i of selection) try {
+                const name = i;
+                await this.copy_object(name, name, this.bucket, undefined, true, act);
             } catch (error) {
-                ElMessageBox.alert('网络请求异常，请重试。' + error, '错误', { type: 'error', confirmButtonText: '好' });
+                ElMessage.error(i + ' 失败: ' + error);
             }
             if (errorCount > 0) ElMessageBox.alert(errorCount + ' 文件操作失败。请检查文件是否存在，或者您是否有权限操作此文件。', '错误', { type: 'error', confirmButtonText: '好' });
             else ElMessage.success('操作成功！');
@@ -541,11 +550,12 @@ const data = {
             const data = (ev.clipboardData || window.clipboardData).getData("text");
             queueMicrotask(() => this.do_paste(data).catch((e) => ElMessage.error('无法粘贴: ' + e)));
         },
-        async copy_object(target, source, source_bucket, signal, override = true) {
+        async copy_object(target, source, source_bucket, signal, override = true, s_class = null) {
             const url = new URL((encodeURIComponent(target).replace(/\%2F/ig, '/')), this.oss_name);
             const headers = {};
             Reflect.set(headers, 'x-oss-copy-source', encodeURI(`/${source_bucket}/${source}`));
             if (!override) Reflect.set(headers, 'x-oss-forbid-overwrite', 'true');
+            if (s_class) Reflect.set(headers, 'x-oss-storage-class', s_class);
             const signed = await sign_url(url, {
                 access_key_id: this.username,
                 access_key_secret: this.usersecret,
@@ -560,7 +570,7 @@ const data = {
                 signal,
                 headers,
             });
-            if (!resp.ok) throw await resp.text();
+            if (!resp.ok) throw `HTTP ${resp.status} ${resp.statusText}`;
             return (await resp.text()) || true;
         },
         async do_paste(clipdata) {
@@ -623,7 +633,6 @@ const data = {
                 let success = 0, count = 0, failures = [];
                 for (const i of obj.objects) {
                     if (Cancelled) throw '用户已取消';
-                    ++count;
                     if (i.endsWith('/')) continue;
                     signal = new AbortController();
                     current.innerText = '';
@@ -633,6 +642,7 @@ const data = {
                     current.append(`当前进度 ${count}/${obj.objects.length} (${Math.floor(count * 1e6 / obj.objects.length) / 1e4}%)`, _2);
                     const relative_path = i.substring(obj.path.length - 1);
                     try {
+                        ++count;
                         if (await this.copy_object(this.path + relative_path, i, obj.bucket, signal.signal, allow_override)) ++success;
                     } catch (error) {
                         failures.push(`${i} 复制失败: ${error}`);
@@ -644,10 +654,36 @@ const data = {
                 btn.innerText = ('完成');
                 btn.onclick = () => el.remove();
                 this.$emit('goPath');
+
+                // 如果文件<10个，则快速完成
+                if (obj.objects.length < 10) {
+                    el.remove();
+                    ElMessage[success === count ? 'success' : (success === 0 ? 'error' : 'warning')](`复制完成，共处理 ${count} 个 Object，${success} 成功，${count - success} 失败。`);
+                }
             } catch (e) {
                 if (typeof e !== 'string') console.error('[copy]', e);
                 el.remove();
                 throw e;
+            }
+        },
+        do_select(act) {
+            switch (act) {
+                case 'prev': {
+                    let ln = 0, shift = 0;
+                    for (const i of this.file_list) {
+                        if (i.children) {
+                            const count = i.children.length - 1;
+                            shift += 1;
+                            for (let i = 0; i < count; ++i) {
+                                this.$refs.table.toggleRowSelection(i + ln + shift, true);
+                            }
+                        }
+                        ++ln;
+                    }
+                    break;
+                }
+                
+                default: ;
             }
         },
     },

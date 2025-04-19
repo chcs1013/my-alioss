@@ -37,16 +37,18 @@
                     <RefreshLeft />
                 </ElIcon>
             </ElButton>
+            <ElPopover :visible="bulkSelectDialogShows" placement="bottom" title="批量选中…" width="240">
+                <template #reference><ElButton style="margin-left: 12px;" v-show="0" size="small" @click="operate('bulkSelectDialogShows')">批量选中…</ElButton></template>
+                <!-- <a href="javascript:" style="margin-top: 0.5em; display: flex;" @click="do_select('prev')">选中所有历史版本</a> -->
+                 暂不支持
+                <Teleport to="body" :disabled="!bulkSelectDialogShows"><div v-deep class="cover" @click="bulkSelectDialogShows = false"></div></Teleport>
+            </ElPopover>
             <ElButton size="small" @click="setvcs" v-if="vcs_status === 'unknown'">手动设置版本控制状态</ElButton>
             <ElCheckbox v-if="vcs_enabled" style="margin-left: 1em;" v-model="vcs_show_">显示历史版本</ElCheckbox>
             <ElPopover :visible="changeStorageTypeDialogShows" placement="bottom" title="更改文件存储类型" width="280">
-                <template #reference><ElButton style="margin-left: 12px;" v-show="false" size="small" @click="operate('chstoragetype')">更改存储类型</ElButton></template>
+                <template #reference><ElButton style="margin-left: 12px;" v-show="!vcs_show" size="small" @click="operate('chstoragetype')">更改存储类型</ElButton></template>
                 <div @click="handleChangeStorageType">
-                    <a href="javascript:" style="margin-top: 0.5em; display: flex;" data-act="Standard">标准存储 (Standard)</a>
-                    <a href="javascript:" style="margin-top: 0.5em; display: flex;" data-act="IA">低频访问 (IA)</a>
-                    <a href="javascript:" style="margin-top: 0.5em; display: flex;" data-act="Archive">归档存储 (Archive)</a>
-                    <a href="javascript:" style="margin-top: 0.5em; display: flex;" data-act="ColdArchive">冷归档存储 (ColdArchive)</a>
-                    <a href="javascript:" style="margin-top: 0.5em; display: flex;" data-act="DeepColdArchive">深度冷归档存储 (DeepColdArchive)</a>
+                    <a v-for="(item, key) in storage_classes" href="javascript:" style="margin-top: 0.5em; display: flex;" :data-act="key">{{item}} ({{key}})</a>
                 </div>
                 <Teleport to="body" :disabled="!changeStorageTypeDialogShows"><div v-deep class="cover" @click="changeStorageTypeDialogShows = false"></div></Teleport>
             </ElPopover>
@@ -66,7 +68,8 @@
             <ElOption value="copy" :disabled="copy_in_progress">{{copy_in_progress?'正在':''}}复制</ElOption>
             <ElOption value="paste">粘贴</ElOption>
             <ElOption value="togglevcs" v-if="vcs_enabled">{{ vcs_show ? '隐藏' : '显示' }}历史版本</ElOption>
-            <!-- <ElOption value="chstoragetype">更改存储类型</ElOption> -->
+            <ElOption value="bulkSelectDialogShows" v-if="vcs_show">批量选中…</ElOption>
+            <ElOption value="chstoragetype" v-if="!vcs_show">更改存储类型</ElOption>
             <ElOption value="refresh">刷新</ElOption>
         </ElSelect>
     </div>
