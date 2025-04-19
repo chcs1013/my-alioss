@@ -336,7 +336,7 @@ const data = {
 
                             const ctls = document.createElement('div');
                             ctls.className = 'x-oss-video-preview-v2-video-ctls';
-                            ctls.setAttribute('style', 'position: absolute; top: 0; left: 0; width: calc(100% - 40px); display: flex; align-items: center; overflow: hidden; margin: 10px; padding: 10px; background: rgba(0,0,0,0.5); color: white; pointer-events: none;')
+                            ctls.setAttribute('style', 'position: absolute; top: 0; left: 0; width: calc(100% - 40px); display: flex; align-items: center; overflow: hidden; margin: 10px; padding: 10px; background: rgba(0,0,0,0.5); color: white; pointer-events: none; border-radius: 5px 5px 0 0;')
                             const title = document.createElement('span');
                             title.append(document.createTextNode(selection[0].name));
                             title.setAttribute('style','flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 0.5em;');

@@ -1,6 +1,7 @@
+export const VERSION = BigInt('20250419224610');
 
-const ProductId = 'fdf3404207ac433293f97c1dd3ca103a';
-export { ProductId };
+const PID = 'fdf3404207ac433293f97c1dd3ca103a';
+export { PID as ProductId };
 
 
     
@@ -56,8 +57,8 @@ function BindMove(el, target = el, options = {
 
     const containerOffset = { left: 0, top: 0 };
 
-    el.classList.add(ProductId + '-el');
-    target.classList.add(ProductId + '-target');
+    el.classList.add(PID + '-el');
+    target.classList.add(PID + '-target');
     el.$__BM_target = target;
     function DragStartHandler() {
         return false;
@@ -84,7 +85,6 @@ function BindMove(el, target = el, options = {
         el.removeEventListener('pointercancel', PointerUpOrCancelHandler);
     }
     el.$__PointerDownHandler = function (ev) {
-        // if (!ev.isPrimary) return;
         if (ev.target.getAttribute('data-exclude-bindmove') != null) return;
 
         el.$__BM_offsetX = ev.x;
@@ -117,17 +117,12 @@ function BindMove(el, target = el, options = {
     el.addEventListener('pointerdown', el.$__PointerDownHandler);
     el.addEventListener('dragstart', nop);
     el.addEventListener('contextmenu', nop);
-
-
-
-    
 }
 
 
 function UnBindMove(el) {
-    el.classList.remove(ProductId + '-el');
-    el.$__BM_target.classList.remove(ProductId + '-target');
-
+    el.classList.remove(PID + '-el');
+    el.$__BM_target.classList.remove(PID + '-target');
 
     el.removeEventListener('pointerdown', el.$__PointerDownHandler);
     el.removeEventListener('dragstart', nop);
@@ -142,20 +137,10 @@ function UnBindMove(el) {
 
 
 export const BindMove_css = addCSS(`
-.${ProductId}-el {
-    user-select: none;
-    touch-action: none;
-}
-.${ProductId}-el.moving {
-    cursor: move;
-}
-.${ProductId}-target {
-    white-space: nowrap;
-}
-.${ProductId}-target.moving {
-    /* position: absolute; */
-    transition: none;
-}
+.${PID}-el { user-select: none; touch-action: none; }
+.${PID}-el.moving { cursor: move;}
+.${PID}-target { white-space: nowrap; }
+.${PID}-target.moving { transition: none; }
 `);
 
 
@@ -188,7 +173,11 @@ export { nop };
 
 
 let ResizableWidgetCSS1 = `
-$$TAG$ {
+$$TAG$:not(:has([slot="widget-caption"])) {
+    --no-caption: none;
+}
+`, ResizableWidgetCSS2 = `
+:host {
     position: absolute;
     z-index: 1002;
     -webkit-app-region: no-drag; app-region: no-drag;
@@ -197,20 +186,15 @@ $$TAG$ {
     touch-action: none;
     box-sizing: border-box;
 }
-$$TAG$:not([open]) { display: none; }
-$$TAG$:focus-visible, $$TAG$:focus {
+:host(:not([open])) { display: none; }
+:host(:focus-visible), :host(:focus) {
     outline: none;
     --focus-visible: "[+]";
 }
-$$TAG$:not(:has([slot="widget-caption"])) {
-    --no-caption: none;
-}
-`, ResizableWidgetCSS2 = `
 resizable-widget-content-container-5e5921c2 {
     display: flex;
     flex-direction: column;
     background-color: var(--background, #FFFFFF);
-    /*border: 1px solid var(--border-color, currentColor);*/
     outline: var(--focus-visible, none);
     box-shadow: 0 0 10px 0 #ccc;
     white-space: nowrap;
@@ -227,16 +211,109 @@ resizable-widget-content-container-5e5921c2 {
     border-bottom: 1px solid var(--border-color, currentColor);
     display: var(--no-caption, revert);
 }
-:host:not([no-focus-box]) #caption::before {
-    content: var(--focus-visible, "");
-    font-family: monospace;
-}
 #container {
     padding: var(--padding, 10px);
     flex: 1;
     overflow: auto;
 }
 `;
+
+
+class ZIndexManagerClass {
+    #elements = [];
+    #zIndexBase = 1;
+    #zIndexMax = 2;
+
+    get [Symbol.toStringTag]() {
+        return 'ZIndexManagerClass';
+    }
+
+    get activeElement() {
+        return this.#elements.length ? (this.#elements[this.#elements.length - 1] || null) : null;
+    }
+
+    constructor() {
+        this.#zIndexBase = 1002;
+        this.#zIndexMax = 1099;
+    }
+
+    config(zIndexBase, zIndexMax) {
+        if (zIndexMax<zIndexBase) throw new TypeError('Invalid zIndexBase and zIndexMax');
+        if (zIndexBase < 1) throw new TypeError('Invalid zIndexBase');
+        this.#zIndexBase = zIndexBase;
+        this.#zIndexMax = zIndexMax;
+        this.update();
+    }
+
+    add(element) {
+        if (!this.#elements.includes(element)) {
+            this.#elements.push(element);
+            this.update();
+        }
+    }
+
+    remove(element) {
+        const index = this.#elements.indexOf(element);
+        if (index !== -1) {
+            this.#elements.splice(index, 1);
+            this.update();
+        }
+    }
+
+    #update() {
+        // 重新计算Index
+        let index = this.#zIndexBase;
+        let _start = 0;
+        // 先判断是否超出最大值
+        const element_count = this.#elements.length;
+        const available_count = this.#zIndexMax - this.#zIndexBase + 1;
+        if (element_count > available_count) {
+            // 超出最大值，那么开头的元素共用一个Index
+            const overflow_count = element_count - available_count; // 计算超出的数量
+            const counts_with_overflow_included = overflow_count + 1; // 数学
+            const slice_begin = 0; // 从第一个开始切片
+            const slice_end = slice_begin + counts_with_overflow_included; // slice是一个半开半闭区间
+            const elementsUsingBaseIndex = this.#elements.slice(slice_begin, slice_end);
+            for (const el of elementsUsingBaseIndex) {
+                el.style.zIndex = this.#zIndexBase;
+            }
+            _start = counts_with_overflow_included;
+            ++index;
+        }
+        const elementsToAllocate = (_start === 0) ? this.#elements : this.#elements.slice(_start);
+        for (const el of elementsToAllocate) {
+            console.assert(index <= this.#zIndexMax);
+            el.style.zIndex = index++;
+        }
+    }
+
+    #updateQueued = false;
+    update() {
+        if (this.#updateQueued) return;
+        this.#updateQueued = true;
+        requestAnimationFrame(() => {
+            this.#update();
+            this.#updateQueued = false;
+        });
+    }
+
+    activate(element) {
+        if (this.#elements.includes(element)) {
+            this.#elements.splice(this.#elements.indexOf(element), 1);
+            this.#elements.push(element);
+        }
+        this.update();
+    }
+
+    deactivate(element) {
+        if (this.#elements.includes(element)) {
+            this.#elements.splice(this.#elements.indexOf(element), 1);
+            this.#elements.splice(0, 0, element); // 放到底部
+        }
+        this.update();
+    }
+}
+export const zIndexManager = new ZIndexManagerClass();
 
 
 export class HTMLResizableWidgetElement extends HTMLElement {
@@ -291,12 +368,43 @@ export class HTMLResizableWidgetElement extends HTMLElement {
 
     connectedCallback() {
         this.tabIndex = 0;
-        
+        this.#processZIndexManagement();
+    }
+
+    disconnectedCallback() {
+        if (!this.zIndexManagementProhibited) zIndexManager.deactivate(this);
+        zIndexManager.remove(this);
+    }
+
+    attributeChangedCallback(name, oldValue, newValue) {
+        if (name === 'z-index-management-prohibited') {
+            this.#processZIndexManagement();
+        }
+    }
+
+    static get observedAttributes() {
+        return ['z-index-management-prohibited'];
     }
 
     get open() { return this.getAttribute('open') != null; }
     set open(val) {
         !!val ? (this.setAttribute('open', ''), this.focus()) : this.removeAttribute('open');
+        if (!this.zIndexManagementProhibited) zIndexManager.activate(this);
+        return true;
+    }
+    get zIndexManagementProhibited() { return this.getAttribute('z-index-management-prohibited') != null; }
+    set zIndexManagementProhibited(val) {
+        !!val ? (this.setAttribute('z-index-management-prohibited', '')) : this.removeAttribute('z-index-management-prohibited');
+        return true;
+    }
+
+    #processZIndexManagement() {
+        if (!this.zIndexManagementProhibited && this.isConnected) {
+            zIndexManager.add(this);
+        } else {
+            zIndexManager.remove(this);
+        }
+        zIndexManager.update();
     }
 
     static get MIN_SIZE() { return 50; }
@@ -373,6 +481,12 @@ export class HTMLResizableWidgetElement extends HTMLElement {
         this.style.cursor = cursor;
     }
     #onpointerdown(ev) {
+        // process z-index change
+        if (!this.zIndexManagementProhibited) {
+            zIndexManager.activate(this);
+        }
+
+        // process resizes
         if (!ev.isPrimary) return;
         if (ev.composedPath()[0] !== this) return;
         this.setPointerCapture((this.#sizingPointerId = ev.pointerId));

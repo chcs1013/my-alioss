@@ -20,8 +20,9 @@ export function delay(timeout = 0) {
 updateLoadStat('Waiting');
 await new Promise(resolve => setTimeout(resolve));
 
-import { addCSS, registerResizableWidget } from './modules/util/BindMove.js';
+import { addCSS, registerResizableWidget, zIndexManager } from './modules/util/BindMove.js';
 registerResizableWidget();
+zIndexManager.config(20001, 20005);
 
 // break long tasks
 await delay();
@@ -67,9 +68,6 @@ updateLoadStat('Loading Element-Plus');
 {
     const element = await import('element-plus');
     app.use(element);
-    // for (const i in element) {
-    //     if (i.startsWith('El')) app.component(i, element[i]);
-    // }
 }
 // break long tasks
 await delay();
@@ -93,18 +91,6 @@ pg_statistics.MNT = new Date() - ST;// app mount
 
 // break long tasks
 await delay(10);
-// updateLoadStat('Registering Service Worker');
-// if ('serviceWorker' in navigator) {
-//     try {
-//         const registration = await navigator.serviceWorker.register('./sw.js');
-//         console.info('[sw]', 'Service Worker registered successfully:', registration);
-//     } catch (error) {
-//         console.error('[sw]', 'Service Worker registration failed:', error);
-//     }
-// } else {
-//     console.warn('[sw]', 'Service Worker is not supported in this browser.');
-// }
-// pg_statistics.SWR = new Date() - ST;// Service Worker Registration
 if (globalThis.swAlive === true && 'serviceWorker' in navigator) {
     try {
         const registrations = await navigator.serviceWorker.getRegistrations();
@@ -227,10 +213,6 @@ queueMicrotask(() => {
 
     document.getElementById('myApp').after(widgets_container);
 });
-
-
-addCSS(`resizable-widget{z-index:20001}`);
-
 
 
 import('@/assets/js/preview-helper.js').then(module => globalThis.appInstance_.PreviewHelper = module);

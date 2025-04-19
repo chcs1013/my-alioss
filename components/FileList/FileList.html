@@ -40,7 +40,7 @@
             <ElButton size="small" @click="setvcs" v-if="vcs_status === 'unknown'">手动设置版本控制状态</ElButton>
             <ElCheckbox v-if="vcs_enabled" style="margin-left: 1em;" v-model="vcs_show_">显示历史版本</ElCheckbox>
             <ElPopover :visible="changeStorageTypeDialogShows" placement="bottom" title="更改文件存储类型" width="280">
-                <template #reference><ElButton style="margin-left: 12px;" size="small" @click="operate('chstoragetype')">更改存储类型</ElButton></template>
+                <template #reference><ElButton style="margin-left: 12px;" v-show="false" size="small" @click="operate('chstoragetype')">更改存储类型</ElButton></template>
                 <div @click="handleChangeStorageType">
                     <a href="javascript:" style="margin-top: 0.5em; display: flex;" data-act="Standard">标准存储 (Standard)</a>
                     <a href="javascript:" style="margin-top: 0.5em; display: flex;" data-act="IA">低频访问 (IA)</a>
@@ -66,7 +66,7 @@
             <!-- <ElOption value="copy">复制</ElOption> -->
             <!-- <ElOption value="paste">粘贴</ElOption> -->
             <ElOption value="togglevcs" v-if="vcs_enabled">{{ vcs_show ? '隐藏' : '显示' }}历史版本</ElOption>
-            <ElOption value="chstoragetype">更改存储类型</ElOption>
+            <!-- <ElOption value="chstoragetype">更改存储类型</ElOption> -->
             <ElOption value="refresh">刷新</ElOption>
         </ElSelect>
     </div>
