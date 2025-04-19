@@ -322,6 +322,53 @@ const data = {
                             else sign_params.expires = time;
                             return await sign_url(url, sign_params);
                         }, head.headers.get('Content-Type') || 'application/octet-stream', selection[0].name);
+
+                        // 如果是视频，那么去掉标题栏
+                        if ((head.headers.get('Content-Type') || '').startsWith('video/')) {
+                            el.querySelector('widget-caption').remove();
+                            const form = el.querySelector('oss-object-preview-form');
+                            const shadow = form.shadowRoot;
+
+                            // 自定义控件
+                            const { BindMove } = await import('@/modules/util/BindMove.js');
+                            BindMove(frame, el);
+
+                            const ctls = document.createElement('div');
+                            ctls.className = 'x-oss-video-preview-v2-video-ctls';
+                            ctls.setAttribute('style', 'position: absolute; top: 0; left: 0; width: calc(100% - 40px); display: flex; align-items: center; overflow: hidden; margin: 10px; padding: 10px; background: rgba(0,0,0,0.5); color: white; pointer-events: none;')
+                            const title = document.createElement('span');
+                            title.append(document.createTextNode(selection[0].name));
+                            title.setAttribute('style','flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 0.5em;');
+                            const close = document.createElement('button');
+                            close.className = 'el-button';
+                            close.setAttribute('style', 'pointer-events: all;');
+                            close.append(document.createTextNode('x'));
+                            ctls.append(title, close);
+                            el.append(ctls);
+
+                            // 添加消息处理程序
+                            let intervalId;
+
+                            const cleanup = () => {
+                                el.remove();
+                                clearInterval(intervalId);
+                            };
+                            close.addEventListener('click', cleanup);
+
+                            let lastMouseMoveTime = Date.now();
+                            const showControls = () => {
+                                ctls.classList.add('active');
+                                lastMouseMoveTime = Date.now();
+                            };
+                            const hideControls = () => {
+                                if (Date.now() - lastMouseMoveTime >= 5000) {
+                                    ctls.classList.remove('active');
+                                }
+                            };
+                            frame.addEventListener('mousemove', showControls);
+                            intervalId = setInterval(hideControls, 1000);
+                            showControls();
+                        }
                     } catch (e) {
                         vel.innerText = `加载失败惹... ${e}`;
                     }
