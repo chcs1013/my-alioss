@@ -24,6 +24,7 @@ const data = {
             loadingInstance: null,
             useBuiltinPreview: false,
             custom_query: [],
+            custom_header: [],
         }
     },
 
@@ -52,6 +53,10 @@ const data = {
             if (!this.linktime && this.dltype === '1') return ElMessage.error('必须输入链接有效期');
             this.loadingInstance = ElLoading.service({ lock: false, fullscreen: false, target: this.$refs.my });
             try {
+                const user_header = {};
+                for (const i of this.custom_header) {
+                    Reflect.set(user_header, i[0], i[1]);
+                }
                 const common_params = {
                     access_key_id: this.username,
                     access_key_secret: this.usersecret,
@@ -59,6 +64,7 @@ const data = {
                     bucket: this.bucket,
                     region: this.region,
                     method: this.req_method,
+                    additionalHeadersList: user_header,
                 };
                 if (this.dltype === '1' && this.linkstart === '2' && this.linktime_start) {
                     // 签名URL的起始时间，为避免时钟误差，允许向后偏移15分钟
@@ -156,8 +162,11 @@ const data = {
         async copySelected() {
             const str = [];
             const selection_raw = this.$refs.table.getSelectionRows();
-            if (selection_raw.length<1) return ElMessage.error('没有选中');
-            for (const i of selection_raw) str.push(i.link);
+            if (selection_raw.length < 1) {
+                this.$refs.table.toggleAllSelection();
+                for (const i of this.files_to_download) str.push(i.link);
+            }
+            else for (const i of selection_raw) str.push(i.link);
             try {
                 await navigator.clipboard.writeText(str.join('\n'));
                 ElMessage.success('已复制');
@@ -168,8 +177,11 @@ const data = {
         async exportSelected() {
             const str = [];
             const selection_raw = this.$refs.table.getSelectionRows();
-            if (selection_raw.length<1) return ElMessage.error('没有选中');
-            for (const i of selection_raw) str.push(i.link);
+            if (selection_raw.length < 1) {
+                this.$refs.table.toggleAllSelection();
+                for (const i of this.files_to_download) str.push(i.link);
+            }
+            else for (const i of selection_raw) str.push(i.link);
             const blob = new Blob(str);
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -189,6 +201,12 @@ const data = {
         },
         removeCustomQuery(index) {
             this.custom_query.splice(index, 1);
+        },
+        addCustomHeader() {
+            this.custom_header.push(['', '']);
+        },
+        removeCustomHeader(index) {
+            this.custom_header.splice(index, 1);
         },
         reset() {
             this.hasInit = false;

@@ -23,6 +23,7 @@ const data = {
             currentCommand: '选择操作...',
             userFilter: '',
             filterDialogShows: false,
+            changeStorageTypeDialogShows: false,
         }
     },
 
@@ -365,7 +366,7 @@ const data = {
                                     ctls.classList.remove('active');
                                 }
                             };
-                            frame.addEventListener('mousemove', showControls);
+                            frame.addEventListener('pointermove', showControls);
                             intervalId = setInterval(hideControls, 1000);
                             showControls();
                         }
@@ -390,8 +391,13 @@ const data = {
                 case 'togglevcs':
                     this.vcs_show_ = !this.vcs_show_;
                     break;
+                
+                case 'chstoragetype':
+                    this.changeStorageTypeDialogShows = true;
+                    break;
 
                 default:
+                    ElMessage.error('暂不支持操作 ' + type);
                     break;
             }
         },
@@ -441,6 +447,61 @@ const data = {
         },
         loadChildren(row, treeNode, resolve) {
             resolve([]);
+        },
+        async handleChangeStorageType(ev) {
+            const el = ev.target;
+            if (!el || !el.dataset) return;
+            const act = el.dataset.act;
+            if (!act) return;
+
+            // 调用 CopyObject
+            let errorCount = 0;
+
+            if (this.vcs_show) return ElMessage.error('不支持VCS');
+
+            const deleted = new Set();
+            ElMessage.success('正在处理您的请求。这可能需要一些时间。');
+            const selection_raw = this.$refs.table.getSelectionRows();
+            const selection = new Array();
+            const path = this.path;
+            const { exportContent } = await import('../App/filelistapi.js');
+            for (const i of selection_raw) try {
+                if (i.hasChildren) continue;
+                if (i.dir) {
+                    // 获取目录里**所有**内容
+                    const tempArr = [];
+                    await exportContent(i.fullKey, tempArr, Object.assign(Object.create(this), {
+                        bucket_name: this.bucket, region_name: this.region,
+                    }), { setDelimiter: false });
+                    selection.push.apply(selection, tempArr.map(v => v.Key));
+                }
+                else selection.push(i.fullKey);
+            } catch (error) {
+                return ElMessageBox.alert('网络请求异常，请重试。' + error, '错误', { type: 'error', confirmButtonText: '好' });
+            }
+            if (selection.length === 0) return ElMessage.error('没有选择任何文件或版本');
+            try {
+                await ElMessageBox.confirm(
+                    `即将修改 ${selection.length} 文件的存储类型为 ${act}。请注意可能的数据解冻/转移费用。确认继续？`,
+                    '更改文件存储类型', { type: 'warning', confirmButtonText: act, cancelButtonText: '保持原样' })
+            } catch { return }
+            return ElMessage.error('暂未实现');
+
+            this.loadingInstance = ElLoading.service({ lock: false, fullscreen: false, target: this.$refs.my });
+
+            const SIZE = 1;
+            for (let i = 0; i < selection.length; i += SIZE) try {
+                const chunk = selection.slice(i, i + SIZE);
+                const url = new URL('/?delete', this.oss_name);
+                //......
+            } catch (error) {
+                ElMessageBox.alert('网络请求异常，请重试。' + error, '错误', { type: 'error', confirmButtonText: '好' });
+            }
+            if (errorCount > 0) ElMessageBox.alert(errorCount + ' 文件操作失败。请检查文件是否存在，或者您是否有权限操作此文件。', '错误', { type: 'error', confirmButtonText: '好' });
+            else ElMessage.success('操作成功！');
+            this.loadingInstance.close();
+            this.loadingInstance = null;
+            this.$emit('goPath')
         },
     },
 

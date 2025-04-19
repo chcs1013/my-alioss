@@ -19,6 +19,8 @@
                 <div style="margin-top: 0.5em;" v-if="userFilter"><a href="javascript:" @click.prevent="() => ((userFilter = ''), (filterDialogShows = false))">清除筛选</a></div>
                 <Teleport to="body" :disabled="!filterDialogShows"><div v-deep class="cover" @click="filterDialogShows = false"></div></Teleport>            
             </ElPopover>
+            <!-- <ElButton size="small" @click="operate('copy')">复制</ElButton> -->
+            <!-- <ElButton size="small" @click="operate('paste')">粘贴</ElButton> -->
         </div>
         <div v-deep class="flexible-feature main-feature flexible-view align-center" style="margin-top: 0.5em;" v-if="!showAll">
             <ElPopover trigger="hover" placement="bottom" width="160" @before-leave="$refs.filter_btn.$el.focus()">
@@ -37,6 +39,17 @@
             </ElButton>
             <ElButton size="small" @click="setvcs" v-if="vcs_status === 'unknown'">手动设置版本控制状态</ElButton>
             <ElCheckbox v-if="vcs_enabled" style="margin-left: 1em;" v-model="vcs_show_">显示历史版本</ElCheckbox>
+            <ElPopover :visible="changeStorageTypeDialogShows" placement="bottom" title="更改文件存储类型" width="280">
+                <template #reference><ElButton style="margin-left: 12px;" size="small" @click="operate('chstoragetype')">更改存储类型</ElButton></template>
+                <div @click="handleChangeStorageType">
+                    <a href="javascript:" style="margin-top: 0.5em; display: flex;" data-act="Standard">标准存储 (Standard)</a>
+                    <a href="javascript:" style="margin-top: 0.5em; display: flex;" data-act="IA">低频访问 (IA)</a>
+                    <a href="javascript:" style="margin-top: 0.5em; display: flex;" data-act="Archive">归档存储 (Archive)</a>
+                    <a href="javascript:" style="margin-top: 0.5em; display: flex;" data-act="ColdArchive">冷归档存储 (ColdArchive)</a>
+                    <a href="javascript:" style="margin-top: 0.5em; display: flex;" data-act="DeepColdArchive">深度冷归档存储 (DeepColdArchive)</a>
+                </div>
+                <Teleport to="body" :disabled="!changeStorageTypeDialogShows"><div v-deep class="cover" @click="changeStorageTypeDialogShows = false"></div></Teleport>
+            </ElPopover>
         </div>
         <ElSelect v-deep v-model="currentCommand" class="flexible-feature alternative-feature" @change="() => (operate(currentCommand), (currentCommand = '选择操作...'))">
             <ElOption value="选择操作...">选择操作</ElOption>
@@ -45,12 +58,15 @@
             <ElOption value="meta">元数据</ElOption>
             <ElOption value="preview">预览</ElOption>
             <ElOption value="filter">筛选{{userFilter?'已启用':""}}</ElOption>
-            <ElOption value="newfile">新建文件</ElOption>
-            <ElOption value="newdir">新建文件夹</ElOption>
             <ElOption value="delete" v-if="!vcs_show">删除选中项</ElOption>
             <ElOption value="delete_version" v-if="vcs_enabled && vcs_show">删除版本</ElOption>
+            <ElOption value="newfile">新建文件</ElOption>
+            <ElOption value="newdir">新建文件夹</ElOption>
             <ElOption value="setvcs" v-if="vcs_status === 'unknown'">设置版本控制状态</ElOption>
+            <!-- <ElOption value="copy">复制</ElOption> -->
+            <!-- <ElOption value="paste">粘贴</ElOption> -->
             <ElOption value="togglevcs" v-if="vcs_enabled">{{ vcs_show ? '隐藏' : '显示' }}历史版本</ElOption>
+            <ElOption value="chstoragetype">更改存储类型</ElOption>
             <ElOption value="refresh">刷新</ElOption>
         </ElSelect>
     </div>
@@ -131,7 +147,7 @@
 body > .cover>>> {
     position: fixed;
     inset: 0;
-    z-index: 2;
+    z-index: 20;
     background-color: #ffffff;
     opacity: 0.5;
 }

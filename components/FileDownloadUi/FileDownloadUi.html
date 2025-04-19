@@ -38,10 +38,26 @@
         <div v-deep class="form-item" v-if="dltype === '1'" style="flex-direction: column; align-items: initial;">
             <template v-for="(item, index) in custom_query">
                 <div v-deep class="custom-query-item">
-                    <ElInput v-model="item[0]" required placeholder="name" style="flex: 1;" />
+                    <ElInput v-model="item[0]" required placeholder="query" style="flex: 1;" />
                     <span class="split">=</span>
                     <ElInput v-model="item[1]" required placeholder="value" style="flex: 2;" />
                     <ElButton text @click="removeCustomQuery(index)" style="--el-button-text-color: #008000"><ElIcon style="scale: 1.5;"><CircleClose /></ElIcon></ElButton>
+                </div>
+            </template>
+        </div>
+        <div v-deep class="form-item" v-if="dltype === '1'" style="justify-content: space-between;">
+            <div>
+                <span>自定义请求标头</span>
+                <ElButton text size="small" @click="addCustomHeader">增加</ElButton>
+            </div>
+        </div>
+        <div v-deep class="form-item" v-if="dltype === '1'" style="flex-direction: column; align-items: initial;">
+            <template v-for="(item, index) in custom_header">
+                <div v-deep class="custom-query-item">
+                    <ElInput v-model="item[0]" required placeholder="x-my-header" style="flex: 1;" />
+                    <span class="split">:</span>
+                    <ElInput v-model="item[1]" required placeholder="value" style="flex: 2;" />
+                    <ElButton text @click="removeCustomHeader(index)" style="--el-button-text-color: #008000"><ElIcon style="scale: 1.5;"><CircleClose /></ElIcon></ElButton>
                 </div>
             </template>
         </div>
@@ -58,9 +74,9 @@
     </div>
     <template v-else>
         <div style="margin-bottom: 1em;">
-            <ElButton type="success" plain @click="copySelected">复制选中</ElButton>
-            <ElButton type="success" plain @click="exportSelected">导出选中</ElButton>
-            <ElButton type="success" plain @click="reset">重新生成</ElButton>
+            <ElButton type="success" plain @click="copySelected">复制</ElButton>
+            <ElButton type="success" plain @click="exportSelected">导出</ElButton>
+            <ElButton type="success" plain @click="reset">重建</ElButton>
         </div>
 
         <ElTable v-deep :data="files_to_download" border style="width:100%;flex:1;" ref="table"
