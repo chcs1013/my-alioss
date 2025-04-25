@@ -31,14 +31,15 @@ class HTMLOssObjectPreviewForm extends HTMLElement {
         const minorType = type_array[1] || '';
         const ossUrl = await getossUrl();
 
+        let is_downgraded = false;
+
         switch (majorType) {
-            case 'text': {
-                this.#el.classList.add('text');
-                fetch(ossUrl).then(v => v.text()).then(v => { this.#el.innerText = ''; this.#el.append(document.createTextNode(v)); }).catch(e => this.#el.innerText = `无法加载预览: ${e}`);
-                break;
-            }
             case 'audio':
-            case 'video': {
+            case 'video': if (false === (
+                u.get('DisallowMediaPreview') == 'true' ||
+                (majorType === 'audio' && u.get('DisallowAudioPreview') == 'true') ||
+                (majorType === 'video' && u.get('DisallowVideoPreview') == 'true')
+            )) {
                 const apply_volume = (p) => {
                     p.addEventListener('volumechange', () => {
                         // save the user's volume preference
@@ -65,8 +66,13 @@ class HTMLOssObjectPreviewForm extends HTMLElement {
                 p.load();
                 p.play().catch(() => { });
                 break;
-            }
-            case 'image': {
+            } else is_downgraded = true;
+            case 'text': if (!(u.get('DisallowTextPreview') == 'true') && majorType === 'text') {
+                this.#el.classList.add('text');
+                fetch(ossUrl).then(v => v.text()).then(v => { this.#el.innerText = ''; this.#el.append(document.createTextNode(v)); }).catch(e => this.#el.innerText = `无法加载预览: ${e}`);
+                break;
+            } else is_downgraded = true;
+            case 'image': if (!(u.get('DisallowMediaPreview') == 'true' || u.get('DisallowImagePreview') == 'true') && majorType === 'image') {
                 let img = document.createElement('img');
                 img.id = 'app';
                 img.src = ossUrl;
@@ -77,9 +83,10 @@ class HTMLOssObjectPreviewForm extends HTMLElement {
                 this.#el.replaceWith(img);
                 break;
             }
-                
+            else is_downgraded = true;
+
             default: switch (fileType) {
-                case 'application/pdf': {
+                case 'application/pdf': if (!(u.get('DisallowPdfPreview') == 'true')) {
                     fetch(ossUrl).then(v => v.blob()).then(v => {
                         let p = document.createElement('object');
                         p.id = 'app';
@@ -89,23 +96,52 @@ class HTMLOssObjectPreviewForm extends HTMLElement {
                     }).catch(e => this.#el.innerText = `无法加载预览: ${e}`);
                     break;
                 }
-            
+                else is_downgraded = true;
+
                 default: {
-                    this.#el.innerText = '';
-                    this.#el.classList.add('text');
-                    const a = document.createElement('a');
-                    a.href = ossUrl;
-                    a.target = '_blank';
-                    a.innerText = '点击下载文件。';
-                    a.rel = 'noopener noreferrer';
-                    a.download = 'true';
-                    this.#el.append('没有预览。', a);
+                    // 根据扩展名判断
+                    const ext = fileName.includes('.') && fileName.split('.').pop().toLowerCase();
+                    switch (ext) {
+                        case 'doc':
+                        case 'docx':
+                        case 'xls':
+                        case 'xlsx':
+                        case 'ppt':
+                        case 'pptx':
+                            if (!(u.get('DisallowOnlineOfficeFilePreview') == 'true' || u.get('DisallowOnlinePreview') == 'true')) {
+                                // 使用 https://view.officeapps.live.com/op/embed.aspx
+                                const url = new URL('https://view.officeapps.live.com/op/embed.aspx');
+                                url.searchParams.set('src', ossUrl);
+                                // 创建iframe以预览
+                                const iframe = document.createElement('iframe');
+                                iframe.setAttribute('style', 'width: 100%; height: 100%; border: 0; box-sizing: border-box;');
+                                iframe.src = url.href;
+                                this.#el.replaceWith(iframe);
+                                break;
+                            }
+                            else is_downgraded = true;
+                    
+                        default: {
+                            this.#el.innerText = '';
+                            this.#el.classList.add('text');
+                            const a = document.createElement('a');
+                            a.href = ossUrl;
+                            a.target = '_blank';
+                            a.innerText = '点击下载文件。';
+                            a.rel = 'noopener noreferrer';
+                            a.download = 'true';
+                            this.#el.append(is_downgraded ? '预览功能由于某个设置项而被停用。' : '没有预览。', a);                            
+                        }
+                    }
                 }
             }
         }
 
-        if ('image/audio/video'.split('/').includes(majorType)) {
+        if ('image/audio/video'.split('/').includes(majorType) && !is_downgraded) {
             this.classList.add('media');
+        }
+        if (is_downgraded) {
+            this.dataset.excludeBindmove = 'true';
         }
 
         this.#initbit = true;

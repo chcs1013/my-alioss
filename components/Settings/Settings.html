@@ -1,7 +1,49 @@
 <div v-deep v-bind="$attrs">
     <h1 style="margin-top: 0; margin-bottom: 0.5em;">设置</h1>
+
+    <ElCard>
+        <template #header>预览设置</template>
+
+        <div style="margin-bottom: 0.5em;">
+            <ElButton @click="setState('Preview', true)">全部打开</ElButton>
+            <ElButton @click="setState('Preview', false)">全部关闭</ElButton>
+        </div>
+
+        <div class="option option-with-switches" v-deep>
+            <div v-deep>
+                <ElSwitch v-model="settings.disallowOnlinePreview" active-text="不允许将文件传输到外部网络以进行预览" />
+            </div>
+            <div v-deep :data-invalid="settings.disallowOnlinePreview"><ElTooltip :disabled="!settings.disallowOnlinePreview" content="被 DisallowOnlinePreview 覆盖。此设置项将不会起作用。" placement="bottom" effect="dark">
+                <ElSwitch v-model="settings.disallowOnlineOfficeFilePreview" active-text="不允许在线预览 Office 文件" />
+            </ElTooltip></div>
+            <div v-deep>
+                <ElSwitch v-model="settings.disallowTextPreview" active-text="不允许预览文本文件" />
+            </div>
+            <div v-deep>
+                <ElSwitch v-model="settings.disallowPdfPreview" active-text="不允许预览 PDF 文件" />
+            </div>
+            <div v-deep>
+                <ElSwitch v-model="settings.disallowMediaPreview" active-text="不允许预览媒体文件" />
+            </div>
+            <div v-deep :data-invalid="settings.disallowMediaPreview"><ElTooltip :disabled="!settings.disallowMediaPreview" content="被 DisallowMediaPreview 覆盖。此设置项将不会起作用。" placement="bottom" effect="dark">
+                <ElSwitch v-model="settings.disallowImagePreview" active-text="不允许预览图片" />
+            </ElTooltip></div>
+            <div v-deep :data-invalid="settings.disallowMediaPreview"><ElTooltip :disabled="!settings.disallowMediaPreview" content="被 DisallowMediaPreview 覆盖。此设置项将不会起作用。" placement="bottom" effect="dark">
+                <ElSwitch v-model="settings.disallowVideoPreview" active-text="不允许预览视频" />
+            </ElTooltip></div>
+            <div v-deep :data-invalid="settings.disallowMediaPreview"><ElTooltip :disabled="!settings.disallowMediaPreview" content="被 DisallowMediaPreview 覆盖。此设置项将不会起作用。" placement="bottom" effect="dark">
+                <ElSwitch v-model="settings.disallowAudioPreview" active-text="不允许预览音频" />
+            </ElTooltip></div>
+        </div>
+    </ElCard>
 </div>
 
 <style>
-    
+.option.option-with-switches[v-deep] > div>>> {
+    display: flex;
+}
+.option.option-with-switches[v-deep] > [data-invalid="true"]>>> {
+    --el-text-color-primary: #aaa;
+}
+
 </style>
