@@ -79,13 +79,13 @@
             <button style="float:right" data-exclude-bindmove="" @click="$refs.loginBox.close()">x</button>
         </widget-caption>
         <div style="display: flex; flex-direction: column; height: 100%; overflow: hidden;">
-            <h1 style="text-align: center;">使用 Access Key 登录</h1>
+            <h1 style="text-align: center; margin-top: 0;">使用 Access Key 登录</h1>
             <ElForm :model="logon_data" label-width="auto">
                 <ElFormItem label="Access Key ID" prop="access_key_id">
-                    <ElInput v-model="logon_data.access_key_id" />
+                    <ElInput v-model="logon_data.access_key_id" clearable />
                 </ElFormItem>
                 <ElFormItem label="Access Key Secret" prop="access_key_secret">
-                    <ElInput v-model="logon_data.access_key_secret" />
+                    <ElInput v-model="logon_data.access_key_secret" type="password" show-password clearable />
                 </ElFormItem>
                 <ElFormItem label="记住登录信息" prop="remember">
                     <ElSwitch v-model="logon_data.remember" />

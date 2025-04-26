@@ -561,9 +561,8 @@ const data = {
                 const user_data_str = u.get('AccessKey');
                 if (user_data_str) try {
                     const user_data = JSON.parse(user_data_str);
-                    this.username = user_data.access_key_id;
-                    this.usersecret = user_data.access_key_secret;
-                    this.logon_data.access_key_id = user_data.access_key_id;
+                    this.username = this.logon_data.access_key_id = user_data.access_key_id;
+                    this.usersecret = this.logon_data.access_key_secret = user_data.access_key_secret;
                 } catch {}
                 const endpoint_str = u.get('Endpoint');
                 if (endpoint_str) {
