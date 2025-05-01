@@ -383,7 +383,7 @@ const data = {
                                     ctls.classList.remove('active');
                                 }
                             };
-                            el.addEventListener('pointermove', showControls);
+                            el.addEventListener('pointermove', showControls, true);
                             intervalId = setInterval(hideControls, 500);
                             showControls();
                         }
