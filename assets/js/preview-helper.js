@@ -56,6 +56,7 @@ class HTMLOssObjectPreviewForm extends HTMLElement {
                 p.id = 'app';
                 this.#el.replaceWith(p);
                 p.controls = true;
+                p.playsInline = true;
                 apply_volume(p);
                     
                 let source = document.createElement('source');

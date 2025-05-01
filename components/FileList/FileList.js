@@ -348,7 +348,10 @@ const data = {
 
                             // 自定义控件
                             const { BindMove } = await import('@/modules/util/BindMove.js');
-                            BindMove(frame, el);
+                            const moving_area = document.createElement('div');
+                            moving_area.className = 'x-oss-video-preview-v2-video-moving-area';
+                            el.prepend(moving_area);
+                            BindMove(moving_area, el);
 
                             const ctls = document.createElement('div');
                             ctls.className = 'x-oss-video-preview-v2-video-ctls';
@@ -380,7 +383,7 @@ const data = {
                                     ctls.classList.remove('active');
                                 }
                             };
-                            frame.addEventListener('pointermove', showControls);
+                            el.addEventListener('pointermove', showControls);
                             intervalId = setInterval(hideControls, 500);
                             showControls();
                         }
