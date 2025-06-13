@@ -6,15 +6,7 @@ script.src = MONO + '/editor/editor.main.js';
 document.head.append(script);
 await new Promise((resolve, reject) => {
     script.onload = resolve;
-    script.onerror = () => {
-        // fallback
-        MONO = './modules/monaco-editor/min/vs';
-        const fallbackScript = document.createElement('script');
-        fallbackScript.src = MONO + '/editor/editor.main.js';
-        document.head.append(fallbackScript);
-        fallbackScript.onload = resolve;
-        fallbackScript.onerror = reject;
-    };
+    script.onerror = reject
 });
 
 await new Promise((resolve, reject) => {
