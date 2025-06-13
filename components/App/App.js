@@ -169,7 +169,7 @@ const data = {
                 });
                 const json = xml2json(await resp.text());
 
-                console.log(json);
+                // console.log(json);
                 break;
             }
             const { exportContent } = await import('./filelistapi.js');

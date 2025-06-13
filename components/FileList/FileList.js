@@ -109,7 +109,7 @@ const data = {
                 return a.dir ? -1 : 1;
             });
 
-            console.log('arr=', arr);
+            // console.log('arr=', arr);
             if (!this.vcs_show) return arr;
             
             const files = new Map();
