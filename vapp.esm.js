@@ -106,6 +106,7 @@ pg_statistics.SWU = new Date() - ST; // Service Worker unregistration duration
 await delay();
 updateLoadStat('Finishing');
 globalThis.FinishLoad?.call(globalThis);
+globalThis?.unsetErrTrack?.();
 pg_statistics.OK = new Date() - ST;// app ok
 
 
