@@ -3,7 +3,7 @@ import { ElMessage, ElMessageBox, ElLoading } from 'element-plus';
 import { xml2json } from '../xml2json/xml2json.js';
 import { Close, Fold } from 'icons-vue';
 import { defineAsyncComponent } from 'vue';
-import { sign_header, ISO8601 } from '@/sign.js';
+import { sign_header, ISO8601 } from '@deps';
 
 
 
@@ -594,7 +594,7 @@ const data = {
             }
         }).catch(() => this.appVersion = '0.0.0.0');
 
-        import('@/sign.js').then(v => {
+        import('@deps').then(v => {
             globalThis.appInstance_.signingkit = {};
             for (const i in v) globalThis.appInstance_.signingkit[i] = v[i];
         });

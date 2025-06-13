@@ -81,7 +81,7 @@
             @selection-change="onSelectionChange"
             @keydown="($event.key === 'Delete') && operate((vcs_show ? 'delete_version' : 'delete'))"
             :tree-props="{ children: 'children', hasChildren: 'hasChildren' }" row-key="name" default-expand-all
-            lazy :load="loadChildren"
+            lazy :load="loadChildren" :key="tableKey"
         >
             <ElTableColumn type="selection" width="40" />
             <ElTableColumn show-overflow-tooltip sortable prop="name" label="文件名" width="400">

@@ -1,5 +1,5 @@
 import { getHTML } from '@/assets/js/browser_side-compiler.js';
-import { sign_url } from '@/sign.js';
+import { sign_url } from '@deps';
 import { uploadFile } from '../upload-core/upload.js';
 import { ElMessage } from 'element-plus';
 

@@ -20,8 +20,7 @@ export function delay(timeout = 0) {
 updateLoadStat('Waiting');
 await new Promise(resolve => setTimeout(resolve));
 
-import { addCSS, registerResizableWidget, zIndexManager } from './modules/util/BindMove.js';
-registerResizableWidget();
+import { zIndexManager } from '@deps';
 zIndexManager.config(20001, 20999);
 
 // break long tasks
@@ -72,7 +71,6 @@ updateLoadStat('Loading Element-Plus');
 // break long tasks
 await delay();
 updateLoadStat('Creating app instance');
-app.config.unwrapInjectedRef = true;
 app.config.compilerOptions.isCustomElement = (tag) => tag.includes('-');
 app.config.compilerOptions.comments = true;
 
@@ -215,8 +213,11 @@ queueMicrotask(() => {
 });
 
 
-import('@/assets/js/preview-helper.js').then(module => globalThis.appInstance_.PreviewHelper = module);
-
+const { setCommonFilePreviewConfigProvider } = await import('@deps');
+setCommonFilePreviewConfigProvider({
+    async get(name) { return u.get(name); },
+    async set(name, value) { return u.set(name, value); }
+});
 
 
 // CODE END

@@ -1,4 +1,4 @@
-import { sign_url } from "@/sign.js";
+import { sign_url } from "@deps";
 import { xml2json } from '@/components/xml2json/xml2json.js';
 
 // FOR DEBUG ONLY

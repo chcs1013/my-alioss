@@ -11,15 +11,16 @@
     <script type="importmap">{
       "imports": {
         "@/": "./",
-        "vue": "./modules/vue/vue.esm-browser.js",
-        "element-plus": "./modules/element-plus/index.full.min.mjs.js",
-        "element-plus/": "./modules/element-plus/",
-        "icons-vue": "./modules/element-plus/icons-vue.min.js",
-        "util/": "./modules/util/"
+        "@deps": "./modules/@deps/bundle.js",
+        "vue": "./modules/@deps/bundle.js",
+        "element-plus": "./modules/@deps/element-plus.js",
+        "icons-vue": "./modules/@deps/element-plus.js",
+        "crypto-js": "./modules/@deps/bundle.js",
+        "common-file-preview": "./modules/@deps/bundle.js"
       }
     }</script>
     <link rel="stylesheet" href="./vapp.css">
-    <link rel="stylesheet" href="./modules/element-plus/element-plus.css">
+    <link rel="stylesheet" href="./modules/@deps/element-plus.css">
     <link rel="apple-touch-icon" href="favicon-192x192.png">
     <script async src="webmanifest.js"></script>
 </head>
@@ -29,8 +30,6 @@
 
     <script src="./assets/js/performance.js"></script>
     <script src="./modules/es-module-shims/es-module-shims.js"></script>
-    <script src="./modules/crypto-js/crypto-js.js"></script>
-    <!-- All modules that doesnt work with Require.JS must before this line -->
     <script src="./modules/require.js/require-min.js"></script>
     <script type="module" src="./vapp.esm.js"></script>
 </body>

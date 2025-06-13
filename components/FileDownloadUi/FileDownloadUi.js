@@ -1,7 +1,7 @@
 import { getHTML } from '@/assets/js/browser_side-compiler.js';
 import { ElMessage, ElMessageBox, ElLoading } from 'element-plus';
 import { CircleClose } from 'icons-vue';
-import { sign_url } from '@/sign.js';
+import { sign_url } from '@deps';
 
 
 const componentId = 'b3cbea65-60bf-44be-b01c-952885e6e0f2';

@@ -1,12 +1,14 @@
 import { getHTML } from '@/assets/js/browser_side-compiler.js';
 import { ElMessage, ElMessageBox, ElLoading } from 'element-plus';
-import { sign_url, sign_header, ISO8601 } from '@/sign.js';
+import { sign_url, sign_header, ISO8601 } from '@deps';
 import { RefreshLeft } from 'icons-vue';
 import { defineAsyncComponent } from 'vue';
 import { uploadFile } from '../upload-core/upload.js';
 import { prettyPrintFileSize } from '@/assets/js/fileinfo.js';
 import { xml2json } from '../xml2json/xml2json.js';
-import { encrypt_data, decrypt_data } from '@/modules/util/aesutil.js';
+import { encrypt_data, decrypt_data } from '@deps';
+import { CryptoJS } from '@deps';
+
 const ExplorerNavBar = defineAsyncComponent(() => import('../FileExplorer/ExplorerNavBar.js'));
 
 
@@ -34,6 +36,7 @@ const data = {
                 "ColdArchive": "冷归档存储",
                 "DeepColdArchive": "深度冷归档存储"
             },
+            tableKey: 0,
         }
     },
 
@@ -60,6 +63,15 @@ const data = {
     watch: {
         path() {
             this.userFilter = '';  
+        },
+        listdata: {
+            handler() {
+                this.$nextTick(() => {
+                    // this.$refs.table.sort('name', 'ascending');
+                    ++this.tableKey;
+                });
+            },
+            immediate: true,
         },
     },
 
@@ -97,6 +109,7 @@ const data = {
                 return a.dir ? -1 : 1;
             });
 
+            console.log('arr=', arr);
             if (!this.vcs_show) return arr;
             
             const files = new Map();
@@ -243,6 +256,7 @@ const data = {
                         cancelButtonText: '取消',
                         type: 'info'
                     }).then(v => {
+                        const extension = (type === 'newdir' || v.value.endsWith('/')) ? null : v.value.split('.').pop();
                         v.value && uploadFile({
                             path: (this.path.substring(1) + '/' + v.value + ((type === 'newfile') ? '' : '/')).replace(/\/\//g, '/'),
                             blob: new Blob([]),
@@ -251,7 +265,7 @@ const data = {
                             region: this.region,
                             username: this.username,
                             usersecret: this.usersecret,
-                            type: (type === 'newfile') ? 'text/plain' : null,
+                            type: (type === 'newfile') ? GetMimeTypeByExtension(extension) : null,
                         }).then(() => {
                             ElMessage.success('操作成功完成。');
                             this.$emit('goPath');
@@ -317,7 +331,6 @@ const data = {
                     const selection = this.$refs.table.getSelectionRows();
                     if (selection.length != 1) return ElMessage.error('此操作只能选择一个文件');
                     if (selection[0].dir) return ElMessage.error('此操作只能应用于文件');
-                    if (!globalThis.appInstance_.PreviewHelper) return ElMessage.error('预览组件尚未完成加载，请稍等片刻...');
 
                     const vel = document.createElement('x-virtual-placeholder');
                     const el = CreateDynamicResizableView(vel, '预览: ' + selection[0].name, 1300, 740);
@@ -331,7 +344,7 @@ const data = {
                         // 确认el是否还在DOM中，如果用户已经关闭弹出窗口则不进行后续请求
                         if (!el.isConnected) break;
 
-                        const frame = document.createElement('oss-object-preview-form');
+                        const frame = document.createElement('common-file-preview');
                         vel.replaceWith(frame);
                         el.setAttribute('style', '--padding: 0;' + (el.getAttribute('style') || ''));
 
@@ -344,10 +357,10 @@ const data = {
                         // 如果是视频，那么去掉标题栏
                         if ((head.headers.get('Content-Type') || '').startsWith('video/')) {
                             el.querySelector('widget-caption').remove();
-                            const form = el.querySelector('oss-object-preview-form');
+                            const form = el.querySelector('common-file-preview');
 
                             // 自定义控件
-                            const { BindMove } = await import('@/modules/util/BindMove.js');
+                            const { BindMove } = await import('@deps');
                             const moving_area = document.createElement('div');
                             moving_area.className = 'x-oss-video-preview-v2-video-moving-area';
                             el.prepend(moving_area);
@@ -435,7 +448,7 @@ const data = {
                         crypto.getRandomValues(rand_bytes);
                         const password = CryptoJS.enc.Hex.stringify(CryptoJS.lib.WordArray.create(rand_bytes));
                         await navigator.clipboard.writeText(JSON.stringify({
-                            data: encrypt_data(text, password),
+                            data: await encrypt_data(text, password, null, 4),
                             app: 'my-alioss',
                             uuid: 'e8d9fcfc-b3ee-4e38-903a-d540b860b738',
                             version: 2025042001,
@@ -582,7 +595,7 @@ const data = {
             if (!json || json.app !== 'my-alioss' || json.uuid !== 'e8d9fcfc-b3ee-4e38-903a-d540b860b738') throw '剪贴板中不是使用本程序复制的数据';
             if (json.version > 2025042001) throw '应用程序版本不兼容，请使用相同版本重新复制';
             if (json.version < 2025042001) throw '暂时不支持此操作，请使用相同版本重新复制';
-            const obj = JSON.parse(decrypt_data(json.data, json.password));
+            const obj = JSON.parse(await decrypt_data(json.data, json.password));
             if (obj.action !== 'copy') throw '数据目的不正确';
             if (obj.region !== this.region) throw '不允许跨区域复制';
 
@@ -609,6 +622,8 @@ const data = {
             const { offsetWidth, offsetHeight } = el;
             el.style.left = `${(innerWidth - offsetWidth) / 2}px`;
             el.style.top = `${(innerHeight - offsetHeight) / 2}px`;
+
+            const myPath = this.path;
 
             try {
                 const _1 = document.createElement('div');
@@ -646,7 +661,7 @@ const data = {
                     const relative_path = i.substring(obj.path.length - 1);
                     try {
                         ++count;
-                        if (await this.copy_object(this.path + relative_path, i, obj.bucket, signal.signal, allow_override)) ++success;
+                        if (await this.copy_object(myPath + relative_path, i, obj.bucket, signal.signal, allow_override)) ++success;
                     } catch (error) {
                         failures.push(`${i} 复制失败: ${error}`);
                     }

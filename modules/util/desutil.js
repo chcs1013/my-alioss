@@ -1,3 +1,5 @@
+import { CryptoJS } from '@deps';
+
 // DES加密函数
 function DES_encrypt(data, key) {
     // 将整数密钥转换为8字节的WordArray

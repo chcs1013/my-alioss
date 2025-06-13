@@ -1,4 +1,4 @@
-import { sign_header, ISO8601 } from '@/sign.js';
+import { sign_header, ISO8601 } from '@deps';
 import { xml2json } from '../xml2json/xml2json.js';
 
 const xml_vcs_parse = (() => {
