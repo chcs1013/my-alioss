@@ -550,6 +550,7 @@ const data = {
                     }
                     u.set('user_endpoint2name', JSON.stringify(this.user_endpoint2name));
                 }
+                if (json.oss_history) u.set('UserHistory', JSON.stringify(json.oss_history));
                 console.info('[preload]', 'Preload data has been applied');
             } catch (e) {
                 console.warn('[preload]', 'Invalid preload data has been found\nFalling back to normal mode.');
